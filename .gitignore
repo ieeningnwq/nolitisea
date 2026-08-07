@@ -1,0 +1,30 @@
+# VS Code
+.vscode/*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg-info/
+dist/
+build/
+buildlib/
+*.egg
+*.whl
+pip-wheel-metadata/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.pyre/ 
+.venv/
+venv/
+env/
+.venv*/
