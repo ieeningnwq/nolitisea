@@ -13,8 +13,5 @@ dependencies = ["numpy>=1.22", "scipy>=1.8"]
 fast = ["numba>=0.56"]
 plot = ["matplotlib>=3.5"]
 
-[project.scripts]
-nolitisea = "nolitisea.cli:main"
-
 [tool.setuptools.packages.find]
 where = ["src"]

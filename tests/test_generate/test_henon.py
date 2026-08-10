@@ -2,11 +2,10 @@ import unittest
 
 import numpy as np
 
-from nolitisea.generate import henon
+from nolitisea.generate.henon import henon
 
 
 class TestHenonMap(unittest.TestCase):
-
     def test_output_shapes_default(self):
         X, Y = henon()
         self.assertIsInstance(X, np.ndarray)
@@ -48,7 +47,7 @@ class TestHenonMap(unittest.TestCase):
     def test_custom_initial_conditions(self):
         X1, Y1 = henon(x0=0.5, y0=-0.2, discard=0, n=1)
         a, b = 1.4, 0.3
-        expected_x1 = a - 0.5 ** 2 + b * (-0.2)
+        expected_x1 = a - 0.5**2 + b * (-0.2)
         expected_y1 = 0.5
         self.assertAlmostEqual(X1[0], expected_x1, places=12)
         self.assertAlmostEqual(Y1[0], expected_y1, places=12)
@@ -57,7 +56,7 @@ class TestHenonMap(unittest.TestCase):
         a, b = 1.4, 0.3
         x0, y0 = 0.1, 0.2
         X, Y = henon(a=a, b=b, x0=x0, y0=y0, discard=0, n=3)
-        self.assertAlmostEqual(X[0], a - x0 ** 2 + b * y0, places=12)
+        self.assertAlmostEqual(X[0], a - x0**2 + b * y0, places=12)
         self.assertAlmostEqual(Y[0], x0, places=12)
         self.assertAlmostEqual(X[1], a - X[0] ** 2 + b * Y[0], places=12)
         self.assertAlmostEqual(Y[1], X[0], places=12)

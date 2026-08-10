@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from nolitisea.generate import lorenz
+from nolitisea.generate.lorenz import lorenz
 
 
 class TestLorenzSystem(unittest.TestCase):
