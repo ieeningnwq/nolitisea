@@ -248,7 +248,6 @@ def add_noise(
 
     # ---- Determine shape for iteration ----
     if data.ndim == 1:
-        _ = data.shape[0]
         n_cols = 1
         # wrap 1D as 2D for uniform processing
         data_view = data.reshape(-1, 1)
@@ -273,7 +272,7 @@ def add_noise(
                 s = np.std(signal)
                 if s < 1e-12:
                     raise ValueError(
-                        "impulse noise with absolute=False requires signal with non‑zero standard deviation. "
+                        "impulse noise with absolute=False requires signal with non-zero standard deviation. "
                         "For constant signals, set absolute=True and specify impulse amplitude via level."
                     )
                 amp = impulse_amplitude * s
