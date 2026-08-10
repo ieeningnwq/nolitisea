@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nolitisea"
+version = "0.1.0"
+description = "Nonlinear time series analysis toolkit (Python reimplementation of Tisean)"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.22", "scipy>=1.8"]
+
+[project.optional-dependencies]
+fast = ["numba>=0.56"]
+plot = ["matplotlib>=3.5"]
+
+[project.scripts]
+nolitisea = "nolitisea.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
