@@ -16,7 +16,16 @@ def lorenz(
 ):
     """Generate time series using the Lorenz system.
 
-    Generates time series using the Lorenz system.
+    Generates time series using the Lorenz system.  The Lorenz system
+    is defined by the following three coupled ordinary differential
+    equations:
+
+        dx/dt = sigma * (y - x)
+        dy/dt = x * (rho - z) - y
+        dz/dt = x * y - beta * z
+
+    where x, y, z are the state variables, and sigma, rho, beta are
+    the classical dimensionless parameters.
 
     Parameters
     ----------
@@ -71,6 +80,3 @@ def lorenz(
         times[discard * sample_int :: sample_int],
         states[discard * sample_int :: sample_int],
     )
-
-
-
