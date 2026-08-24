@@ -42,14 +42,3 @@ def recurrence_rate(rmat):
         Fraction of recurring points.
     """
     raise NotImplementedError
-
-
-def run(argv=None):
-    """CLI entry point: build a recurrence plot.
-
-    Parameters
-    ----------
-    argv : list[str] or None
-        Optional argument vector.
-    """
-    raise NotImplementedError

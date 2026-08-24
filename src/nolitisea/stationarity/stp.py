@@ -25,14 +25,3 @@ def space_time_separation(series, dim, delay, max_time, n_eps=100):
         ``(times, eps_grid, fractions)``.
     """
     raise NotImplementedError
-
-
-def run(argv=None):
-    """CLI entry point: space-time separation plot.
-
-    Parameters
-    ----------
-    argv : list[str] or None
-        Optional argument vector.
-    """
-    raise NotImplementedError

@@ -31,7 +31,7 @@ def autocorrelation(x, max_lag=None, norm=True, detrend=True):
     x = np.asarray(x)
     N = len(x)
 
-    if not max_lag:
+    if max_lag is None:
         max_lag = N
     else:
         max_lag = min(N, max_lag)

@@ -74,14 +74,3 @@ def lzo_gm(series, dim, delay):
         ``(local_error, global_error)`` arrays.
     """
     raise NotImplementedError
-
-
-def run(argv=None):
-    """CLI entry point: dispatch to one of the lzo tools.
-
-    Parameters
-    ----------
-    argv : list[str] or None
-        Optional argument vector.
-    """
-    raise NotImplementedError
