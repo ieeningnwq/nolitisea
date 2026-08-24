@@ -1,6 +1,9 @@
-"""Recurrence plot (TISEAN ``recurr``)."""
+"""Recurrence plot."""
 
 import numpy as np
+from scipy.spatial.distance import cdist
+
+from nolitisea.core.embed import delay_embedding
 
 
 def recurrence_matrix(series, dim, delay, eps, metric="euclidean"):
@@ -25,7 +28,21 @@ def recurrence_matrix(series, dim, delay, eps, metric="euclidean"):
         Boolean matrix of shape ``(n_points, n_points)`` where
         ``R[i, j] = ||x_i - x_j|| < eps``.
     """
-    raise NotImplementedError
+    data = np.asarray(series)
+    
+    # Phase space reconstruction (Time Delay Embedding)
+    # Construct state vectors by taking 'dim' elements separated by 'delay'
+    embedded_vectors = delay_embedding(data, dim, delay)
+    
+    # Calculate the pairwise distance matrix
+    # cdist computes the distance between every pair of vectors efficiently
+    distance_matrix = cdist(embedded_vectors, embedded_vectors, metric=metric)
+    
+    # Apply the Heaviside step function threshold
+    # Returns a boolean matrix where True represents a recurrence
+    recurrence_mask = distance_matrix <= eps
+    
+    return recurrence_mask
 
 
 def recurrence_rate(rmat):
