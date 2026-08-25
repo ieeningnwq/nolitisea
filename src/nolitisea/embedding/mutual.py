@@ -3,6 +3,7 @@
 import warnings
 
 import numpy as np
+from scipy.spatial.distance import pdist, squareform
 
 
 def mutual_information(
@@ -130,6 +131,145 @@ def first_minimum(series, max_lag, n_bins=16):
         Estimated delay.
     """
     raise NotImplementedError
+
+
+def _build_gaussian_kernel(series, sigma=None):
+    """
+    Build a Gaussian (Radial Basis Function) kernel matrix for a given series.
+
+    Parameters
+    ----------
+    series : array_like
+        Input 1D time series or 2D feature matrix (samples, features).
+    sigma : float, optional
+        Bandwidth parameter for the Gaussian kernel. If None, it is estimated
+        using the median of the pairwise distances (Silverman's heuristic).
+
+    Returns
+    -------
+    numpy.ndarray
+        The computed Gram matrix (kernel matrix).
+    """
+    data = np.asarray(series)
+    if data.ndim == 1:
+        data = data.reshape(-1, 1)
+
+    # Calculate pairwise Euclidean distances
+    sq_dists = pdist(data, metric="sqeuclidean")
+
+    # Estimate sigma using the median distance if not provided
+    if sigma is None:
+        # Avoid zero division if all points are identical
+        median_sq_dist = np.median(sq_dists)
+        sigma_sq = median_sq_dist if median_sq_dist > 0 else 1.0
+    else:
+        sigma_sq = sigma**2
+
+    # Compute the Gaussian Kernel Matrix
+    K_condensed = np.exp(-sq_dists / (2.0 * sigma_sq))
+    K = squareform(K_condensed)
+
+    # Fill the main diagonal with 1.0 (distance to itself is 0)
+    np.fill_diagonal(K, 1.0)
+
+    return K
+
+
+def _matrix_renyi_entropy(K, alpha=2.0):
+    """
+    Calculate the Matrix-based Renyi Entropy of a kernel matrix.
+
+    Parameters
+    ----------
+    K : numpy.ndarray
+        A square, symmetric kernel matrix.
+    alpha : float, default 2.0
+        The order of the Renyi entropy. alpha=2 corresponds to collision entropy,
+        which is highly optimized in this implementation.
+
+    Returns
+    -------
+    float
+        The computed Renyi entropy in bits.
+    """
+    # Normalize the kernel matrix to act as a density matrix (Trace = 1)
+    trace_K = np.trace(K)
+    A = K / trace_K
+
+    if alpha == 2.0:
+        # Fast path for alpha = 2.0
+        # The trace of A^2 for a symmetric matrix is simply the sum of its squared elements.
+        # This dramatically reduces time complexity from O(N^3) to O(N^2).
+        trace_A_alpha = np.sum(A**2)
+    else:
+        # General path for other values of alpha using eigenvalue decomposition O(N^3)
+        eigenvalues = np.linalg.eigvalsh(A)
+        # Filter out negative eigenvalues caused by floating-point inaccuracies
+        eigenvalues = eigenvalues[eigenvalues > 1e-10]
+        trace_A_alpha = np.sum(eigenvalues**alpha)
+
+    # Compute the entropy
+    entropy = (1.0 / (1.0 - alpha)) * np.log2(trace_A_alpha)
+
+    return entropy
+
+
+def matrix_renyi_mutual_information(x, y, alpha=2.0, sigma_x=None, sigma_y=None):
+    """
+    Calculate the Matrix-based Renyi Mutual Information between two time series.
+
+    This method estimates mutual information directly from the eigenspectrum of
+    kernel matrices, entirely avoiding Probability Density Function (PDF) estimation
+    (such as binning or KDE).
+
+    Reference
+    ---------
+    Sanchez Giraldo, L. G., Rao, A. R., & Principe, J. C. (2014).
+    Measures of entropy from data using infinitely divisible kernels.
+    IEEE Transactions on Information Theory, 60(10), 6212-6222.
+    DOI: 10.1109/TIT.2014.2340023
+
+    Parameters
+    ----------
+    x : array_like
+        First input time series.
+    y : array_like
+        Second input time series. Must have the same length as x.
+    alpha : float, default 2.0
+        The order of the Renyi entropy.
+    sigma_x : float, optional
+        Bandwidth for the Gaussian kernel of x.
+    sigma_y : float, optional
+        Bandwidth for the Gaussian kernel of y.
+
+    Returns
+    -------
+    float
+        The estimated mutual information I(X;Y) in bits.
+    """
+    if len(x) != len(y):
+        raise ValueError("Input series x and y must have the same length.")
+
+    # 1. Build kernel matrices for individual variables
+    K_x = _build_gaussian_kernel(x, sigma=sigma_x)
+    K_y = _build_gaussian_kernel(y, sigma=sigma_y)
+
+    # 2. Build the joint kernel matrix
+    # In the RKHS framework, the joint representation is the Hadamard (element-wise) product
+    K_xy = K_x * K_y
+
+    # 3. Calculate individual entropies S(X) and S(Y)
+    H_x = _matrix_renyi_entropy(K_x, alpha=alpha)
+    H_y = _matrix_renyi_entropy(K_y, alpha=alpha)
+
+    # 4. Calculate joint entropy S(X, Y)
+    H_xy = _matrix_renyi_entropy(K_xy, alpha=alpha)
+
+    # 5. Calculate Mutual Information: I(X;Y) = S(X) + S(Y) - S(X,Y)
+    mutual_info = H_x + H_y - H_xy
+
+    # Prevent negative output due to numerical floating-point errors
+    return max(0.0, float(mutual_info))
 
 
 def run(argv=None):
