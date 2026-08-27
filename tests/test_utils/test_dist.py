@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from scipy.spatial.distance import chebyshev, cityblock, euclidean
 
-from nolitisea.utils.dist import dist
+from nolitisea.utils.dist import pairwise_row_distance
 
 
 class TestDistWrapper(unittest.TestCase):
@@ -36,31 +36,31 @@ class TestDistWrapper(unittest.TestCase):
         )
 
     def test_dist_cityblock(self):
-        res = dist(self.x, self.y, metric="cityblock")
+        res = pairwise_row_distance(self.x, self.y, metric="cityblock")
         np.testing.assert_allclose(res, self.ref_cityblock)
 
     def test_dist_euclidean(self):
-        res = dist(self.x, self.y, metric="euclidean")
+        res = pairwise_row_distance(self.x, self.y, metric="euclidean")
         np.testing.assert_allclose(res, self.ref_euclidean)
 
     def test_dist_chebyshev(self):
-        res = dist(self.x, self.y, metric="chebyshev")
+        res = pairwise_row_distance(self.x, self.y, metric="chebyshev")
         np.testing.assert_allclose(res, self.ref_chebyshev)
 
     def test_dist_default_metric(self):
         # 默认参数 chebyshev
-        res = dist(self.x, self.y)
+        res = pairwise_row_distance(self.x, self.y)
         np.testing.assert_allclose(res, self.ref_chebyshev)
 
     def test_dist_unknown_metric_raise(self):
         with self.assertRaises(ValueError):
-            dist(self.x, self.y, metric="cosine")
+            pairwise_row_distance(self.x, self.y, metric="cosine")
 
     def test_dist_one_sample(self):
         # 单个样本 (1,3)
         x1 = np.array([[1.0, 2.0, 3.0]], dtype=np.float64)
         y1 = np.array([[4.0, 6.0, 8.0]], dtype=np.float64)
-        d = dist(x1, y1, metric="chebyshev")
+        d = pairwise_row_distance(x1, y1, metric="chebyshev")
         self.assertEqual(d.shape, (1,))
         self.assertAlmostEqual(d[0], 5.0)
 
@@ -68,7 +68,7 @@ class TestDistWrapper(unittest.TestCase):
         x_ = np.array([[2.5, -1.2], [0.0, 7.1]], dtype=np.float64)
         y_ = x_.copy()
         for met in ["cityblock", "euclidean", "chebyshev"]:
-            d = dist(x_, y_, metric=met)
+            d = pairwise_row_distance(x_, y_, metric=met)
             np.testing.assert_allclose(d, np.zeros(2))
 
 

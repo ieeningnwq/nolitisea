@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree  # type: ignore
 
 
 def sample_entropy(time_series, m=2, r_multiplier=0.2):

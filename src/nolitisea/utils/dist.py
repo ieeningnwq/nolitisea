@@ -2,7 +2,7 @@ import numpy as np
 from numba import jit
 
 
-def dist(x, y, metric="chebyshev"):
+def pairwise_row_distance(x, y, metric="chebyshev"):
     """Compute the distance between all sequential pairs of points.
 
     Computes the distance between all sequential pairs of points from
@@ -23,11 +23,11 @@ def dist(x, y, metric="chebyshev"):
         Array containing distances.
     """
     if metric == "cityblock":
-        func = cityblock_dist
+        func = cityblock_pairwise_row_distance
     elif metric == "euclidean":
-        func = euclidean_dist
+        func = euclidean_pairwise_row_distance
     elif metric == "chebyshev":
-        func = chebyshev_dist
+        func = chebyshev_pairwise_row_distance
     else:
         raise ValueError(
             'Unknown metric.  Should be one of "cityblock", '
@@ -38,7 +38,7 @@ def dist(x, y, metric="chebyshev"):
 
 
 @jit("float64[:](float64[:, :], float64[:, :])", nopython=True)
-def cityblock_dist(x, y):
+def cityblock_pairwise_row_distance(x, y):
     n = x.shape[0]
     d = x.shape[1]
     out = np.empty(n, dtype=np.float64)
@@ -52,7 +52,7 @@ def cityblock_dist(x, y):
 
 
 @jit("float64[:](float64[:, :], float64[:, :])", nopython=True)
-def euclidean_dist(x, y):
+def euclidean_pairwise_row_distance(x, y):
     n = x.shape[0]
     d = x.shape[1]
     out = np.empty(n, dtype=np.float64)
@@ -66,7 +66,7 @@ def euclidean_dist(x, y):
 
 
 @jit("float64[:](float64[:, :], float64[:, :])", nopython=True)
-def chebyshev_dist(x, y):
+def chebyshev_pairwise_row_distance(x, y):
     n = x.shape[0]
     d = x.shape[1]
     out = np.empty(n, dtype=np.float64)
