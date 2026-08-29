@@ -1,3 +1,3 @@
 """Cross-analysis between time series (TISEAN ``XTisean``)."""
 
-from . import xcor, xzero, xc2, xrecur  # noqa: F401
+from . import xc2, xcor, xrecur, xzero  # noqa: F401

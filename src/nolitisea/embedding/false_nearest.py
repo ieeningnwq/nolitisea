@@ -9,7 +9,6 @@ from nolitisea.core.embed import delay_embedding
 from nolitisea.core.neighbors import find_neighbors
 from nolitisea.utils.dist import pairwise_row_distance
 from nolitisea.utils.parallel import parallel_map
-from typing import Optional
 
 
 def _kennel_method(ts, m, delay, R_tol, A_tol, theiler, maxnum, metric):

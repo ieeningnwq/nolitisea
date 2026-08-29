@@ -4,5 +4,13 @@ random utilities shared by every algorithm module.
 Corresponds to the ``source_c/routines/`` directory of TISEAN.
 """
 
-from . import io, embed, neighbors, boxcount_kernel  # noqa: F401
-from . import matrix, eigen, rescale, exclude  # noqa: F401
+from . import (  # noqa: F401
+    boxcount_kernel,
+    eigen,
+    embed,
+    exclude,
+    io,
+    matrix,
+    neighbors,
+    rescale,
+)

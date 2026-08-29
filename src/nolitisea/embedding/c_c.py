@@ -1,101 +1,70 @@
+from __future__ import annotations
+
+from functools import partial
+
 import numpy as np
 from scipy.signal import argrelextrema
 from scipy.spatial import cKDTree
 
-
-def delay_embedding(ts: np.ndarray, emb: int, delay: int) -> np.ndarray:
-    """Create a delay-coordinate embedding matrix.
-
-    Parameters
-    ----------
-    ts : np.ndarray
-        1-D time series.
-    emb : int
-        Embedding dimension.
-    delay : int
-        Time delay (lag) used in the reconstruction.
-
-    Returns
-    -------
-    np.ndarray
-        Embedding matrix of shape (n_points, emb).
-    """
-    n_points = len(ts) - (emb - 1) * delay
-    if n_points <= 0:
-        return np.empty((0, emb))
-    return np.column_stack(
-        [ts[i * delay : n_points + i * delay] for i in range(emb)]
-    )
+from nolitisea.core.embed import delay_embedding
+from nolitisea.utils.parallel import parallel_map
 
 
-def correlation_integral_1d(ts: np.ndarray, eps: float) -> float:
-    """Calculate the 1-D correlation integral of a time series.
-
-    C_1(eps) = (# unordered pairs with Chebyshev distance <= eps)
-             / (total unordered pairs)
-
-    Parameters
-    ----------
-    ts : np.ndarray
-        1-D time series.
-    eps : float
-        Distance radius.
-
-    Returns
-    -------
-    float
-        The 1-D correlation integral value.
-    """
-    n_points = len(ts)
-    if n_points <= 1:
-        return 0.0
-
-    ts_2d = ts.reshape(-1, 1)
-    tree = cKDTree(ts_2d)
-    raw_counts = tree.count_neighbors(tree, eps, p=np.inf)
-
+def _integral_from_tree(tree, n_points: int, eps: float) -> float:
+    """Compute the correlation integral from a prebuilt KDTree."""
     # count_neighbors counts ordered pairs including self-pairs (i, i).
     # Subtract self-pairs and divide by 2 to obtain unordered i < j pairs.
-    counts = (raw_counts - n_points) // 2
-    valid_total = (n_points * (n_points - 1)) // 2
-
-    return counts / valid_total if valid_total > 0 else 0.0
-
-
-def correlation_integral_md(ts: np.ndarray, m: int, t: int, eps: float) -> float:
-    """Calculate the m-dimensional correlation integral for delay t.
-
-    Parameters
-    ----------
-    ts : np.ndarray
-        1-D time series.
-    m : int
-        Embedding dimension.
-    t : int
-        Delay used inside the reconstruction.
-    eps : float
-        Distance radius.
-
-    Returns
-    -------
-    float
-        The m-dimensional correlation integral value.
-    """
-    emb_m = delay_embedding(ts, m, t)
-    n_points = len(emb_m)
-    if n_points <= 1:
-        return 0.0
-
-    tree = cKDTree(emb_m)
     raw_counts = tree.count_neighbors(tree, eps, p=np.inf)
-
     counts = (raw_counts - n_points) // 2
     valid_total = (n_points * (n_points - 1)) // 2
 
     return counts / valid_total if valid_total > 0 else 0.0
 
 
-def cc_method(ts: np.ndarray, max_t: int = 200) -> dict:
+def _cc_single_t(ts, t, m_values, r_values):
+    """Compute (S_mean, delta_S, S_cor) for a single candidate delay t.
+
+    Each KDTree is built once per (sub-series, dimension) and reused across
+    all radii, since the tree depends only on the embedding, not on r.
+    """
+    # S_mr[a, b] = S(m_a, r_b, t), averaged over the t sub-series.
+    S_mr = np.zeros((len(m_values), len(r_values)))
+
+    for s in range(t):
+        # The s-th disjoint sub-series: x_s, x_{s+t}, x_{s+2t}, ...
+        sub = np.ascontiguousarray(ts[s::t])
+        if len(sub) <= max(m_values):
+            continue
+
+        tree_1d = cKDTree(sub.reshape(-1, 1))
+        c1_vals = [_integral_from_tree(tree_1d, len(sub), r) for r in r_values]
+
+        # Reconstruct *inside the sub-series* with delay = 1, because the
+        # sub-series elements are already spaced by t in the original data.
+        for a, m in enumerate(m_values):
+            emb = delay_embedding(sub, m, 1)
+            tree_md = cKDTree(emb)
+            for b, r in enumerate(r_values):
+                C_m = _integral_from_tree(tree_md, len(emb), r)
+                S_mr[a, b] += C_m - c1_vals[b] ** m
+
+    S_mr /= max(t, 1)
+
+    # S_mean(t): average of S(m, r, t) over all m and all r.
+    s_mean = S_mr.mean()
+    # delta_S(t): for each m take max - min over r, then average over m.
+    delta_s = (S_mr.max(axis=1) - S_mr.min(axis=1)).mean()
+    # S_cor(t) = delta_S(t) + |S_mean(t)|.
+    s_cor = delta_s + abs(s_mean)
+    return s_mean, delta_s, s_cor
+
+
+def cc_method(
+    ts: np.ndarray,
+    max_t: int = 200,
+    n_jobs: int | None = None,
+    backend: str = "thread",
+) -> dict:
     """Estimate the time delay (tau) and embedding dimension (m) via C-C.
 
     References
@@ -110,6 +79,14 @@ def cc_method(ts: np.ndarray, max_t: int = 200) -> dict:
         1-D scalar time series.
     max_t : int
         Maximum candidate time delay to evaluate.
+    n_jobs : int, optional (default = None)
+        Workers for the per-delay loop.  ``None``/``1`` runs
+        sequentially; ``-1`` uses all CPUs (see
+        ``nolitisea.utils.parallel.parallel_map``).
+    backend : {"thread", "process"}, optional (default = "thread")
+        Executor backend for the per-delay loop.  ``"thread"`` is
+        preferred: cKDTree kernels release the GIL and no data
+        serialization is needed.
 
     Returns
     -------
@@ -130,36 +107,10 @@ def cc_method(ts: np.ndarray, max_t: int = 200) -> dict:
     r_values = [0.5 * std_dev, 1.0 * std_dev, 1.5 * std_dev, 2.0 * std_dev]
 
     t_range = np.arange(1, max_t + 1)
-    S_mean = np.zeros(max_t)
-    delta_S = np.zeros(max_t)
-    S_cor = np.zeros(max_t)
 
-    for t_idx, t in enumerate(t_range):
-        # S_mr[a, b] = S(m_a, r_b, t), averaged over the t sub-series.
-        S_mr = np.zeros((len(m_values), len(r_values)))
-
-        for s in range(t):
-            # The s-th disjoint sub-series: x_s, x_{s+t}, x_{s+2t}, ...
-            sub = ts[s::t]
-            if len(sub) <= max(m_values):
-                continue
-
-            # Reconstruct *inside the sub-series* with delay = 1, because the
-            # sub-series elements are already spaced by t in the original data.
-            for a, m in enumerate(m_values):
-                for b, r in enumerate(r_values):
-                    C_m = correlation_integral_md(sub, m, 1, r)
-                    C_1 = correlation_integral_1d(sub, r)
-                    S_mr[a, b] += (C_m - C_1 ** m)
-
-        S_mr /= max(t, 1)
-
-        # S_mean(t): average of S(m, r, t) over all m and all r.
-        S_mean[t_idx] = S_mr.mean()
-        # delta_S(t): for each m take max - min over r, then average over m.
-        delta_S[t_idx] = (S_mr.max(axis=1) - S_mr.min(axis=1)).mean()
-        # S_cor(t) = delta_S(t) + |S_mean(t)|.
-        S_cor[t_idx] = delta_S[t_idx] + np.abs(S_mean[t_idx])
+    worker = partial(_cc_single_t, ts, m_values=m_values, r_values=r_values)
+    per_t = parallel_map(worker, t_range, n_jobs=n_jobs, backend=backend)
+    S_mean, delta_S, S_cor = (np.asarray(col, dtype=np.float64) for col in zip(*per_t))
 
     # --- Parameter extraction ---
     # Time delay tau: first local minimum of delta_S(t).  This follows the
@@ -199,9 +150,7 @@ if __name__ == "__main__":
         xs = []
         for _ in range(n):
             x, y, z = state
-            state += np.array(
-                [s * (y - x), x * (r - z) - y, x * y - b * z]
-            ) * dt
+            state += np.array([s * (y - x), x * (r - z) - y, x * y - b * z]) * dt
             xs.append(state[0])
         return np.array(xs)
 
@@ -209,9 +158,9 @@ if __name__ == "__main__":
     noise = rng.standard_normal(4000)
 
     print("Lorenz x-component:")
-    res_l = cc_method(_lorenz_x(), max_t=30)
+    res_l = cc_method(_lorenz_x(), max_t=30, n_jobs=-1)
     print(f"  tau = {res_l['tau']}, t_w = {res_l['t_w']}, m = {res_l['m']}")
 
     print("White noise:")
-    res_n = cc_method(noise, max_t=30)
+    res_n = cc_method(noise, max_t=30, n_jobs=-1)
     print(f"  tau = {res_n['tau']}, t_w = {res_n['t_w']}, m = {res_n['m']}")
