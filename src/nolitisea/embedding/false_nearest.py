@@ -1,13 +1,15 @@
 """False nearest neighbours for embedding-dimension selection."""
 from __future__ import annotations
 
-import numpy as np
 from functools import partial
+
+import numpy as np
 
 from nolitisea.core.embed import delay_embedding
 from nolitisea.core.neighbors import find_neighbors
 from nolitisea.utils.dist import pairwise_row_distance
 from nolitisea.utils.parallel import parallel_map
+from typing import Optional
 
 
 def _kennel_method(ts, m, delay, R_tol, A_tol, theiler, maxnum, metric):
@@ -121,7 +123,7 @@ def _cao_method(ts, m, delay, theiler, maxnum, metric):
 
 def cao_method(
     ts: np.ndarray, min_emb: int = 1, max_emb: int = 10, delay: int = 1, metric: str = "chebyshev",
-    theiler: int = 0, maxnum: int = None, n_jobs: int = None, backend: str = "thread"
+    theiler: int = 0, maxnum: int|None = None, n_jobs: int|None = None, backend: str = "thread"
 ) -> dict:
     """
     Calculates the E(d) and E^*(d) metrics using Cao's method to determine

@@ -49,12 +49,3 @@ def d2(series, dim_max, delay, eps_list=None):
     raise NotImplementedError
 
 
-def run(argv=None):
-    """CLI entry point: correlation dimension computation.
-
-    Parameters
-    ----------
-    argv : list[str] or None
-        Optional argument vector.
-    """
-    raise NotImplementedError
