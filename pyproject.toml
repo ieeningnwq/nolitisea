@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nolitisea"
 version = "0.1.0"
-description = "Nonlinear time series analysis toolkit (Python reimplementation of Tisean)"
+description = "Nonlinear time series analysis toolkit"
 requires-python = ">=3.9"
 dependencies = ["numpy>=1.22", "scipy>=1.8"]
 

@@ -39,7 +39,7 @@ def recurrence_matrix(series, dim, delay, eps, metric="euclidean"):
 
     # Calculate the pairwise distance matrix
     # cdist computes the distance between every pair of vectors efficiently
-    distance_matrix = cdist(embedded_vectors, embedded_vectors, metric=metric)
+    distance_matrix = cdist(embedded_vectors, embedded_vectors, metric=metric) # type: ignore
 
     # Apply the Heaviside step function threshold
     # Returns a boolean matrix where True represents a recurrence

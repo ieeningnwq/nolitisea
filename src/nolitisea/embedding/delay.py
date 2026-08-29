@@ -21,14 +21,3 @@ def delay_vectors(series, dim, delay):
         Array of shape ``(n_points, dim)``.
     """
     raise NotImplementedError
-
-
-def run(argv=None):
-    """CLI entry point: write a delay embedding.
-
-    Parameters
-    ----------
-    argv : list[str] or None
-        Optional argument vector.
-    """
-    raise NotImplementedError

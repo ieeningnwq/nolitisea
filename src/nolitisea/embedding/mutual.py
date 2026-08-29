@@ -270,14 +270,3 @@ def matrix_renyi_mutual_information(x, y, alpha=2.0, sigma_x=None, sigma_y=None)
 
     # Prevent negative output due to numerical floating-point errors
     return max(0.0, float(mutual_info))
-
-
-def run(argv=None):
-    """CLI entry point: estimate the mutual information.
-
-    Parameters
-    ----------
-    argv : list[str] or None
-        Optional argument vector.
-    """
-    raise NotImplementedError

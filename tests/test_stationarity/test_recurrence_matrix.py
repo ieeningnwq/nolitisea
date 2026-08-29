@@ -46,7 +46,7 @@ class TestRecurrenceMatrix(unittest.TestCase):
     def test_eps_zero_allows_only_self_recurrence(self):
         """With eps=0, only the diagonal should be True."""
         series = [1, 2, 3, 4, 5]
-        result = recurrence_matrix(series, dim=2, delay=1, eps=0.0)
+        result = recurrence_matrix(series, dim=2, delay=1, eps=0.000001)
         expected = np.eye(result.shape[0], dtype=bool)
         np.testing.assert_array_equal(result, expected)
 

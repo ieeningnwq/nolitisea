@@ -37,7 +37,7 @@ def pairwise_row_distance(x, y, metric="chebyshev"):
     return func(x, y)
 
 
-@jit("float64[:](float64[:, :], float64[:, :])", nopython=True)
+@jit("float64[:](float64[:, :], float64[:, :])", nopython=True, nogil=True)
 def cityblock_pairwise_row_distance(x, y):
     n = x.shape[0]
     d = x.shape[1]
@@ -51,7 +51,7 @@ def cityblock_pairwise_row_distance(x, y):
     return out
 
 
-@jit("float64[:](float64[:, :], float64[:, :])", nopython=True)
+@jit("float64[:](float64[:, :], float64[:, :])", nopython=True, nogil=True)
 def euclidean_pairwise_row_distance(x, y):
     n = x.shape[0]
     d = x.shape[1]
@@ -65,7 +65,7 @@ def euclidean_pairwise_row_distance(x, y):
     return out
 
 
-@jit("float64[:](float64[:, :], float64[:, :])", nopython=True)
+@jit("float64[:](float64[:, :], float64[:, :])", nopython=True, nogil=True)
 def chebyshev_pairwise_row_distance(x, y):
     n = x.shape[0]
     d = x.shape[1]
