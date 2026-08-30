@@ -53,6 +53,13 @@ def delay_embedding(series, dim, delay=1):
 def mixed_embedding(series_list, dims, delays):
     """Build a multivariate mixed delay embedding.
 
+    Each variable is embedded with its own dimension and delay; all rows
+    share the same base index, i.e. row ``r`` holds
+    ``[x_i(r), x_i(r + delay_i), ..., x_i(r + (dim_i - 1) * delay_i)]``
+    for every variable ``i``.  The number of rows is the minimum value
+    compatible with all variables,
+    ``n_points = min_i(n_i - (dim_i - 1) * delay_i)``.
+
     Parameters
     ----------
     series_list : sequence of array_like
@@ -65,9 +72,45 @@ def mixed_embedding(series_list, dims, delays):
     Returns
     -------
     numpy.ndarray
-        Array of shape ``(n_points, sum(dims))``.
+        Array of shape ``(n_points, sum(dims))`` where the delay
+        coordinates of variable ``i`` occupy the column block
+        ``sum(dims[:i]) : sum(dims[:i + 1])``.
+
+    Raises
+    ------
+    ValueError
+        If ``series_list``, ``dims`` and ``delays`` disagree in length,
+        if any embedding dimension or delay is below 1, or if any series
+        is not 1-dimensional or too short for its requested embedding.
     """
-    raise NotImplementedError
+    series_list = list(series_list)
+    dims = list(dims)
+    delays = list(delays)
+    if not (len(series_list) == len(dims) == len(delays)):
+        raise ValueError(
+            "series_list, dims and delays must have the same length, got "
+            f"{len(series_list)}, {len(dims)} and {len(delays)}."
+        )
+    if not series_list:
+        raise ValueError("At least one series is required.")
+
+    blocks = []
+    n_points = None
+    for i, (series, dim, delay) in enumerate(zip(series_list, dims, delays)):
+        if dim < 1:
+            raise ValueError(f"variable {i}: embedding dimension must be >= 1.")
+        if delay < 1:
+            raise ValueError(f"variable {i}: delay must be >= 1.")
+        try:
+            block = delay_embedding(series, dim, delay)
+        except ValueError as exc:
+            raise ValueError(f"variable {i}: {exc}") from exc
+        n_points = (
+            block.shape[0] if n_points is None else min(n_points, block.shape[0])
+        )
+        blocks.append(block)
+
+    return np.hstack([block[:n_points] for block in blocks])
 
 
 def embedding_indices(n, dim, delay):
