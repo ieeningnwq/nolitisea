@@ -1,3 +1,3 @@
-"""Test data generators: Henon, Ikeda, Lorenz, noise, AR iteration."""
+"""Test data generators: Henon, Ikeda, Lorenz, AR iteration."""
 
-from . import add_noise, ar_run, henon, ikeda, lorenz  # noqa: F401
+from . import ar_run, henon, ikeda, lorenz  # noqa: F401
