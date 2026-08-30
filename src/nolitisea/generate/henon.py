@@ -29,16 +29,16 @@ def henon(a=1.4, b=0.3, x0=0.0, y0=0.0, discard=1000, n=10000):
     """
     x, y = x0, y0
 
-    # Discard discard iterations
+    # Discard transient iterations
     for _ in range(discard):
-        x, y = a - x**2 + b * y, x
+        x, y = 1 - a * x**2 + b * y, x
 
     # Store the attractor trajectory
     X = np.zeros(n)
     Y = np.zeros(n)
 
     for i in range(n):
-        x, y = a - x**2 + b * y, x
+        x, y = 1 - a * x**2 + b * y, x
         X[i], Y[i] = x, y
 
     return X, Y

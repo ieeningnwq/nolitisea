@@ -26,7 +26,7 @@ class TestHenonMap(unittest.TestCase):
         a, b = 1.4, 0.3
         X, Y = henon(a=a, b=b, discard=100, n=50)
         for i in range(len(X) - 1):
-            expected_x_next = a - X[i] ** 2 + b * Y[i]
+            expected_x_next = 1 - a * X[i] ** 2 + b * Y[i]
             expected_y_next = X[i]
             self.assertAlmostEqual(X[i + 1], expected_x_next, places=12)
             self.assertAlmostEqual(Y[i + 1], expected_y_next, places=12)
@@ -41,13 +41,13 @@ class TestHenonMap(unittest.TestCase):
         a, b = 1.2, 0.2
         X, Y = henon(a=a, b=b, discard=50, n=30)
         for i in range(len(X) - 1):
-            self.assertAlmostEqual(X[i + 1], a - X[i] ** 2 + b * Y[i], places=12)
+            self.assertAlmostEqual(X[i + 1], 1 - a * X[i] ** 2 + b * Y[i], places=12)
             self.assertAlmostEqual(Y[i + 1], X[i], places=12)
 
     def test_custom_initial_conditions(self):
         X1, Y1 = henon(x0=0.5, y0=-0.2, discard=0, n=1)
         a, b = 1.4, 0.3
-        expected_x1 = a - 0.5**2 + b * (-0.2)
+        expected_x1 = 1 - a * 0.5**2 + b * (-0.2)
         expected_y1 = 0.5
         self.assertAlmostEqual(X1[0], expected_x1, places=12)
         self.assertAlmostEqual(Y1[0], expected_y1, places=12)
@@ -56,9 +56,9 @@ class TestHenonMap(unittest.TestCase):
         a, b = 1.4, 0.3
         x0, y0 = 0.1, 0.2
         X, Y = henon(a=a, b=b, x0=x0, y0=y0, discard=0, n=3)
-        self.assertAlmostEqual(X[0], a - x0**2 + b * y0, places=12)
+        self.assertAlmostEqual(X[0], 1 - a * x0**2 + b * y0, places=12)
         self.assertAlmostEqual(Y[0], x0, places=12)
-        self.assertAlmostEqual(X[1], a - X[0] ** 2 + b * Y[0], places=12)
+        self.assertAlmostEqual(X[1], 1 - a * X[0] ** 2 + b * Y[0], places=12)
         self.assertAlmostEqual(Y[1], X[0], places=12)
 
     def test_transient_is_discarded(self):
