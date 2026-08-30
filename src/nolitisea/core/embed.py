@@ -105,12 +105,139 @@ def mixed_embedding(series_list, dims, delays):
             block = delay_embedding(series, dim, delay)
         except ValueError as exc:
             raise ValueError(f"variable {i}: {exc}") from exc
-        n_points = (
-            block.shape[0] if n_points is None else min(n_points, block.shape[0])
-        )
+        n_points = block.shape[0] if n_points is None else min(n_points, block.shape[0])
         blocks.append(block)
 
     return np.hstack([block[:n_points] for block in blocks])
+
+
+def delay_vectors(series, embdim=None, delay=1, dims=None, increments=None):
+    """Produce delay vectors.
+
+    Build the multivariate delay-coordinate matrix
+    convention: row ``r`` corresponds to base time ``n = r + max_offset``
+    and holds, for every variable, its delay coordinates looking
+    *backward* from ``n``::
+
+        E[r, block_i + k] = x_i(n - offset_{i, k}),   offset_{i, 0} = 0,
+
+    where the block of variable ``i`` occupies the columns
+    ``sum(dims[:i]) : sum(dims[:i + 1])``.  This reproduces the C
+    program's output layout (``-F``/``-d``/``-D`` semantics).  Note that
+    :func:`delay_embedding` and :func:`mixed_embedding` anchor the
+    vectors at the *oldest* sample instead; both conventions describe
+    the same set of delay vectors.
+
+    Parameters
+    ----------
+    series : array_like
+        Input data.  A 1-D array is a single variable; a 2-D array must
+        have shape ``(n_vars, n_times)`` with one row per variable).
+    embdim : int, optional
+        Total embedding dimension (C option ``-m``).  Defaults to ``2``
+        when ``dims`` is not given and to ``sum(dims)`` otherwise.
+    delay : int, default 1
+        Delay increment between successive coordinates of a variable.  Ignored when ``increments`` is given.
+    dims : sequence of int, optional
+        Embedding dimension per variable (C option ``-F``).  When given,
+        ``embdim`` (if provided) must equal ``sum(dims)``.
+    increments : sequence of int, optional
+        Delay increment between successive coordinates, consumed across
+        variables in order.  Must contain
+        ``embdim - n_vars`` entries and overrides ``delay``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(n_points, embdim)`` with
+        ``n_points = n_times - max(offsets)``.
+
+    Raises
+    ------
+    ValueError
+        For invalid parameter combinations or a series too short for
+        the requested delay offsets.
+    """
+    arr = np.asarray(series)
+    if arr.ndim == 1:
+        arr = arr[None, :]
+    if arr.ndim != 2:
+        raise ValueError(
+            "series must be a 1-D array or a 2-D array of shape (n_vars, n_times)"
+        )
+    n_vars, length = arr.shape
+
+    # Per-variable embedding dimensions (C ``formatlist``).
+    if dims is None:
+        if embdim is None:
+            embdim = 2  # C default
+        if embdim < 1:
+            raise ValueError("embdim must be >= 1")
+        if embdim % n_vars:
+            raise ValueError(
+                f"embdim={embdim} is not a multiple of the {n_vars} "
+                "variable(s); supply per-variable dims instead"
+            )
+        dims = [embdim // n_vars] * n_vars
+    else:
+        if np.ndim(dims) == 0:
+            raise ValueError("dims must be a sequence with one entry per variable")
+        dims = [int(d) for d in dims]
+        if len(dims) != n_vars:
+            raise ValueError(
+                f"dims has {len(dims)} entries but the series has {n_vars} variable(s)"
+            )
+        if any(d < 1 for d in dims):
+            raise ValueError("every entry of dims must be >= 1")
+        if embdim is None:
+            embdim = sum(dims)
+        elif embdim != sum(dims):
+            raise ValueError(f"embdim={embdim} does not match sum(dims)={sum(dims)}")
+
+    # Cumulative delay offset of every coordinate (C ``inddelay``).
+    offsets = []
+    if increments is None:
+        if delay < 1:
+            raise ValueError("delay must be >= 1")
+        for m in dims:
+            offsets.append([k * delay for k in range(m)])
+    else:
+        if np.ndim(increments) == 0:
+            raise ValueError(
+                "increments must be a sequence with embdim - n_vars entries"
+            )
+        increments = [int(d) for d in increments]
+        if len(increments) != embdim - n_vars:
+            raise ValueError(
+                f"increments must contain embdim - n_vars = "
+                f"{embdim - n_vars} entries, got {len(increments)}"
+            )
+        if any(d < 1 for d in increments):
+            raise ValueError("every entry of increments must be >= 1")
+        pos = 0
+        for m in dims:
+            offs = [0]
+            for _ in range(m - 1):
+                offs.append(offs[-1] + increments[pos])
+                pos += 1
+            offsets.append(offs)
+
+    max_offset = max(max(offs) for offs in offsets)
+    n_points = length - max_offset
+    if n_points <= 0:
+        raise ValueError(
+            f"series length ({length}) is too short for the requested "
+            f"delay offsets (largest {max_offset})"
+        )
+
+    embedded = np.empty((n_points, embdim), dtype=arr.dtype)
+    col = 0
+    for component, offs in zip(arr, offsets):
+        for off in offs:
+            start = max_offset - off
+            embedded[:, col] = component[start : start + n_points]
+            col += 1
+    return embedded
 
 
 def embedding_indices(n, dim, delay):
