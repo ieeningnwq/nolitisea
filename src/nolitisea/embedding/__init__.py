@@ -2,7 +2,6 @@
 
 from . import (  # noqa: F401
     c_c,
-    delay,
     extrema,
     false_nearest,
     mutual,

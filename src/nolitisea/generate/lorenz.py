@@ -54,7 +54,7 @@ def lorenz(
         Array containing points in phase space.
     """
 
-    def _lorenz(t, x):
+    def _lorenz(_, x):
         return [
             sigma * (x[1] - x[0]),
             x[0] * (rho - x[2]) - x[1],
