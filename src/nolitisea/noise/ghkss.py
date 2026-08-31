@@ -4,7 +4,8 @@ from __future__ import annotations
 import numpy as np
 from scipy.spatial import cKDTree  # type: ignore
 
-from nolitisea.core.rescale import rescale_data
+from nolitisea.core.embed import lag_block_delay_embed
+from nolitisea.utils.rescale import rescale_data
 
 __all__ = ["ghkss"]
 
@@ -16,28 +17,6 @@ _METRIC_HEAVY = 1.0e3
 # lies in [0, 1], so the Chebyshev diameter of the embedding space is <= 1 and
 # eps > 2 must contain every point.
 _EPS_MAX = 2.0
-
-
-def _embed(s: np.ndarray, comp: int, embed: int, delay: int) -> np.ndarray:
-    """Build the GHKSS delay-coordinate matrix.
-
-    ``s`` has shape ``(n_times, comp)`` — one row per time step, one column
-    per component.  Row ``r`` of the result corresponds to time
-    ``n = r + (embed - 1) * delay`` and holds, for delay index ``k`` and
-    component ``c``::
-
-        E[r, k * comp + c] = s[n - k * delay, c]
-
-    This reproduces the C coordinate order given by
-    ``index_comp[i] = i % comp`` and ``index_embed[i] = (i // comp) * delay``.
-    """
-    emb_offset = (embed - 1) * delay
-    n_points = s.shape[0] - emb_offset
-    E = np.empty((n_points, comp * embed), dtype=np.float64)
-    for k in range(embed):
-        lo = emb_offset - k * delay
-        E[:, k * comp:(k + 1) * comp] = s[lo:lo + n_points, :]
-    return E
 
 
 def _local_correction(E, row, nb, metric, qdim):
@@ -221,7 +200,7 @@ def ghkss(
 
     stats = []
     for _ in range(iterations):
-        E = _embed(s, comp, embed, delay)
+        E = lag_block_delay_embed(s, embed, delay)
         tree = cKDTree(E)
         corr = np.zeros((n_points, dim), dtype=np.float64)
         ok = np.zeros(n_points, dtype=np.int64)
