@@ -150,7 +150,6 @@ class TestLyapRBruteForce(unittest.TestCase):
         # algorithm exactly (the C box-scan tie order is an
         # implementation detail and deviates here by design).
         rng = np.random.default_rng(7)
-        s = np.cumsum(rng.standard_normal(300))
         sd = np.round(np.cumsum(rng.standard_normal(240)))
         res = lyap_r(sd, dim=3, delay=1, max_steps=8, theiler=2)
         brute = _reference_brute(sd, dim=3, delay=1, max_steps=8, theiler=2)
