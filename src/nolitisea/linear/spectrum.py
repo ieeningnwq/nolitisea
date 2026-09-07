@@ -1,4 +1,4 @@
-"""FFT-based power spectrum estimation (TISEAN ``spectrum``)."""
+"""FFT-based power spectrum estimation."""
 
 from __future__ import annotations
 
@@ -92,10 +92,33 @@ def power_spectrum(
         fft_vals = np.fft.rfft(x)
         freq = np.fft.rfftfreq(n, d=1.0 / fs)
 
+        # rfft returns the one-sided positive-frequency half of the FFT.
+        # Every non-DC, non-Nyquist bin must be doubled so that the
+        # one-sided spectrum carries the total power of both positive and
+        # negative frequencies (matching scipy.signal.periodogram).
+        #
+        # Nyquist bin exists only when N is even (len(psd) = N/2 + 1, odd
+        # number of bins, last bin k = N/2 is fs/2 with no negative image).
+        # When N is odd there is no Nyquist bin and every positive bin has
+        # a negative partner — so we double *all* bins except DC.
+        psd = np.abs(fft_vals) ** 2
+        if n % 2 == 0:
+            psd[1:-1] *= 2.0  # skip DC (0) and Nyquist (last)
+        else:
+            psd[1:] *= 2.0  # skip DC only; every positive bin has a partner
+
+        # Scaling convention (matches scipy.signal.periodogram):
+        #   spectrum : V_spec = 2·|X[k]|² / N²   (power-conserving: sum == mean(x²))
+        #   density  : V_den  = 2·|X[k]|² / (N·fs)   (integrates to mean(x²):
+        #                                          sum(V_den · df) == mean(x²), df=fs/N)
+        # DC and Nyquist bins use the same denominator but no doubling
+        # (they are unique frequencies, not repeated ± pairs).
         if scaling == "density":
-            psd = np.abs(fft_vals) ** 2 / (fs * n)
-        else:  # "spectrum"
-            psd = np.abs(fft_vals) ** 2 / n
+            psd = psd / (n * fs)
+        elif scaling == "spectrum":
+            psd = psd / (n * n)
+        else:
+            raise ValueError(f"Unknown scaling '{scaling}'.")
 
         if not return_onesided:
             raise ValueError("return_onesided=False not supported for method='fft'")

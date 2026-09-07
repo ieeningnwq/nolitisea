@@ -67,7 +67,11 @@ class TestPowerSpectrumMethods(unittest.TestCase):
         x = x - x.mean()
         n = x.size
         fft_vals = np.fft.rfft(x)
-        expected = np.abs(fft_vals) ** 2 / n
+        # spectrum scaling: double non-DC/Nyquist, then / N²
+        expected = np.abs(fft_vals) ** 2
+        if len(expected) >= 3:
+            expected[1:-1] *= 2.0
+        expected /= n * n
         f, p = power_spectrum(x, method="fft", detrend=None,
                               scaling="spectrum")
         np.testing.assert_allclose(f, np.fft.rfftfreq(n, d=1.0), rtol=1e-12)
@@ -76,10 +80,20 @@ class TestPowerSpectrumMethods(unittest.TestCase):
     def test_fft_density_scaling(self):
         rng = np.random.default_rng(13)
         x = rng.standard_normal(64)
-        _, p_dens = power_spectrum(x, method="fft", scaling="density", fs=1.0)
-        _, p_spec = power_spectrum(x, method="fft", scaling="spectrum")
-        # density = spectrum / fs  (here fs=1, n=64; density = spectrum / (fs*n))
-        np.testing.assert_allclose(p_dens, p_spec / 64.0, rtol=1e-12)
+        fs = 2.5
+        n = len(x)
+        _, p_dens = power_spectrum(x, method="fft", scaling="density", fs=fs)
+        _, p_spec = power_spectrum(x, method="fft", scaling="spectrum", fs=fs)
+        # density / spectrum ratio is N / fs for every bin (including DC
+        # and Nyquist): density = doubling / (N·fs), spectrum = doubling / N²
+        ratio = n / fs
+        np.testing.assert_allclose(p_dens / p_spec, ratio, rtol=1e-12)
+        # density also integrates to mean(x²) via ∑p·df with df = fs/N
+        f = np.fft.rfftfreq(n, d=1.0 / fs)
+        df = f[1] - f[0]
+        x_mean0 = x - x.mean()
+        np.testing.assert_allclose(np.sum(p_dens * df),
+                                   np.mean(x_mean0 ** 2), rtol=1e-10)
 
 
 class TestPowerSpectrumPhysical(unittest.TestCase):
