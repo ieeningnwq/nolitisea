@@ -56,7 +56,7 @@ def fit_ar_model(series, order=1):
     -----
     With ``N`` samples and model order ``p`` the residuals use the
     population normalisation ``sigma_d^2 = sum_t residual_d(t)^2 / (N - p)``
-    (no degrees-of-freedom correction), matching TISEAN exactly.
+    (no degrees-of-freedom correction).
 
     References
     ----------
@@ -110,7 +110,8 @@ def fit_ar_model(series, order=1):
     }
 
 
-def iterate_ar_model(coeffs, sigma, n_steps, seed=None, initial=None):
+def iterate_ar_model(coeffs, sigma, n_steps, seed=None, initial=None,
+                     mean=None):
     """Iterate a fitted multivariate AR model driven by Gaussian noise.
 
     Generates a realisation of the recursion:
@@ -136,20 +137,27 @@ def iterate_ar_model(coeffs, sigma, n_steps, seed=None, initial=None):
         Initial history of shape ``(order, dim)`` in chronological
         order (oldest row first); a 1-D array of shape ``(order,)``
         is accepted when ``dim == 1``.  ``None`` (default) draws the
-        history from the same Gaussian noise, mirroring the TISEAN
-        warm start.
+        history from the same Gaussian noise.  The history must be
+        given in mean-subtracted units regardless of ``mean``.
+    mean : float, array_like or None
+        Per-component mean that was subtracted by :func:`fit_ar_model`
+        (its ``"mean"`` entry, shape ``(dim,)``; a scalar is
+        accepted).  If given, it is added to the output so the result
+        is in the original series units; if ``None`` (default) the
+        output stays mean-subtracted.
 
     Returns
     -------
     numpy.ndarray
-        Generated series of shape ``(n_steps, dim)``, in mean-
-        subtracted units (add the ``"mean"`` of the fit to restore the
-        original level).
+        Generated series of shape ``(n_steps, dim)``; in mean-
+        subtracted units when ``mean is None``, otherwise in the
+        original series units.
 
     Raises
     ------
     ValueError
-        For invalid ``coeffs``, ``sigma``, ``n_steps`` or ``initial``.
+        For invalid ``coeffs``, ``sigma``, ``mean``, ``n_steps`` or
+        ``initial``.
     """
     a = np.asarray(coeffs, dtype=np.float64)
     if a.ndim != 3 or a.shape[0] != a.shape[1] or a.shape[2] < 1:
@@ -167,6 +175,19 @@ def iterate_ar_model(coeffs, sigma, n_steps, seed=None, initial=None):
         )
     if not np.all(np.isfinite(sigma_arr)) or np.any(sigma_arr < 0):
         raise ValueError("sigma must be finite and >= 0")
+
+    if mean is not None:
+        mean_arr = np.asarray(mean, dtype=np.float64)
+        if mean_arr.ndim == 0:
+            mean_arr = np.full(dim, float(mean_arr))
+        if mean_arr.shape != (dim,):
+            raise ValueError(
+                f"mean must be a scalar or have shape ({dim},), got {mean_arr.shape}"
+            )
+        if not np.all(np.isfinite(mean_arr)):
+            raise ValueError("mean must be finite")
+    else:
+        mean_arr = None
 
     if n_steps < 1:
         raise ValueError(f"n_steps must be >= 1, got {n_steps}")
@@ -198,4 +219,6 @@ def iterate_ar_model(coeffs, sigma, n_steps, seed=None, initial=None):
         out[t] = val
         buf[pos] = val
         pos = (pos + 1) % order
+    if mean_arr is not None:
+        out = out + mean_arr
     return out
