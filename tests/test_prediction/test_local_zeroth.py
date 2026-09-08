@@ -73,7 +73,7 @@ def _brute_zeroth_one_epsilon(series, embed=2, delay=1, step=1, causal=None,
             continue
 
         nbr_times = np.asarray(nbr_times_list)
-        y_all = rescaled[nbr_times + step, :]
+        y_all = rescaled[nbr_times + step, :]  # pyright: ignore[reportCallIssue, reportArgumentType]
         y_pred = y_all.mean(axis=0)
         y_true = rescaled[i_orig + step, :]
 
@@ -258,9 +258,9 @@ class TestLzoGm(unittest.TestCase):
             min_neighbors=10,
         )
         self.assertIsNotNone(brute)
-        self.assertAlmostEqual(result["avg_error"][0], brute["avg_error"],
+        self.assertAlmostEqual(result["avg_error"][0], brute["avg_error"],  # pyright: ignore[reportOptionalSubscript]
                                places=10)
-        self.assertAlmostEqual(result["coverage"][0], brute["coverage"],
+        self.assertAlmostEqual(result["coverage"][0], brute["coverage"],  # pyright: ignore[reportOptionalSubscript]
                                places=10)
 
     def test_brute_force_delay_gt_1(self):
@@ -274,7 +274,7 @@ class TestLzoGm(unittest.TestCase):
             min_neighbors=10,
         )
         self.assertIsNotNone(brute)
-        self.assertAlmostEqual(result["avg_error"][0], brute["avg_error"],
+        self.assertAlmostEqual(result["avg_error"][0], brute["avg_error"],  # pyright: ignore[reportOptionalSubscript]
                                places=10)
 
     def test_with_2d_series(self):
@@ -477,7 +477,7 @@ class TestLzoTest(unittest.TestCase):
         # Normalised errors should be close (adapt vs fixed full-box)
         # They won't be bitwise identical because lzo_test uses adaptive
         # eps per ref point, but both cover > 99%
-        self.assertGreater(result["n_ref_points"], brute["pfound"] * 0.99)
+        self.assertGreater(result["n_ref_points"], brute["pfound"] * 0.99)  # pyright: ignore[reportOptionalSubscript]
 
     def test_delay_gt_1(self):
         result = lzo_test(self.series, embed=3, delay=3, step=1,

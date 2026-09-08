@@ -14,7 +14,6 @@ from nolitisea.prediction.esn import (
 )
 from nolitisea.utils.rescale import rescale_data
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

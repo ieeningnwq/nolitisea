@@ -75,8 +75,8 @@ def _brute_lfo_ar(series, embed=2, delay=1, step=1, causal=None):
 
         nbr_embed_idx = np.asarray(nbr_embed_idx)
         nbr_times = nbr_embed_idx + valid_start
-        X = E[nbr_embed_idx]
-        y_all = rescaled[nbr_times + step, :]
+        X = E[nbr_embed_idx]  # pyright: ignore[reportCallIssue, reportArgumentType]
+        y_all = rescaled[nbr_times + step, :]  # pyright: ignore[reportCallIssue, reportArgumentType]
 
         X_mean = X.mean(axis=0)
         Xc = X - X_mean
@@ -157,8 +157,8 @@ def _brute_lfo_test(series, embed=2, delay=1, step=1, causal=None, min_neighbors
             continue
 
         nbr_times = np.asarray(nbr_times_list)
-        X = E[nbr_times - valid_start]
-        y_all = rescaled[nbr_times + step, :]
+        X = E[nbr_times - valid_start]  # pyright: ignore[reportCallIssue, reportArgumentType]
+        y_all = rescaled[nbr_times + step, :]  # pyright: ignore[reportCallIssue, reportArgumentType]
         y_true = rescaled[i_orig + step, :]
 
         X_mean = X.mean(axis=0)
@@ -416,8 +416,8 @@ class TestLfoTestBruteForceAgreement(unittest.TestCase):
         )
         brute = _brute_lfo_test(x, embed=1, delay=1, step=1, causal=1, min_neighbors=1)
         self.assertIsNotNone(brute)
-        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)
-        self.assertAlmostEqual(res["avg_error"], brute["avg_error"], places=10)
+        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)  # pyright: ignore[reportOptionalSubscript]
+        self.assertAlmostEqual(res["avg_error"], brute["avg_error"], places=10)  # pyright: ignore[reportOptionalSubscript]
 
     def test_single_component_embed2(self):
         rng = np.random.default_rng(11)
@@ -434,7 +434,7 @@ class TestLfoTestBruteForceAgreement(unittest.TestCase):
         )
         brute = _brute_lfo_test(x, embed=2, delay=1, step=1, causal=1, min_neighbors=1)
         self.assertIsNotNone(brute)
-        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)
+        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)  # pyright: ignore[reportOptionalSubscript]
 
     def test_multivariate(self):
         rng = np.random.default_rng(12)
@@ -451,7 +451,7 @@ class TestLfoTestBruteForceAgreement(unittest.TestCase):
         )
         brute = _brute_lfo_test(X, embed=1, delay=1, step=1, causal=1, min_neighbors=1)
         self.assertIsNotNone(brute)
-        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)
+        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)  # pyright: ignore[reportOptionalSubscript]
 
     def test_delay_gt_1(self):
         rng = np.random.default_rng(13)
@@ -468,7 +468,7 @@ class TestLfoTestBruteForceAgreement(unittest.TestCase):
         )
         brute = _brute_lfo_test(x, embed=3, delay=2, step=1, causal=1, min_neighbors=1)
         self.assertIsNotNone(brute)
-        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)
+        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)  # pyright: ignore[reportOptionalSubscript]
 
     def test_large_causal_window(self):
         rng = np.random.default_rng(14)
@@ -485,7 +485,7 @@ class TestLfoTestBruteForceAgreement(unittest.TestCase):
         )
         brute = _brute_lfo_test(x, embed=2, delay=1, step=1, causal=20, min_neighbors=1)
         self.assertIsNotNone(brute)
-        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)
+        np.testing.assert_allclose(res["comp_errors"], brute["comp_errors"], rtol=1e-9)  # pyright: ignore[reportOptionalSubscript]
 
 
 class TestLfoTestDeterministicProcess(unittest.TestCase):

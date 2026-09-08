@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree  # pyright: ignore[reportAttributeAccessIssue]
 
 from nolitisea.core.embed import lag_block_delay_embed
 from nolitisea.utils.rescale import rescale_data
@@ -404,10 +404,10 @@ def lzo_run(
     # Keep rows where the embedding has a valid one-step target
     last_valid_row = n_embed_points - 2
     E = E[: last_valid_row + 1]
-    targets = rescaled[valid_start : last_valid_row + valid_start + 2, :]
-    # targets[r] = rescaled[t+1] where t = r + valid_start
-    # So targets[r] is the one-step future of embedding row r
-    n_db = E.shape[0]
+    targets = rescaled[valid_start + 1 : valid_start + last_valid_row + 2, :]
+    # E[r] corresponds to original time t = r + valid_start.
+    # The one-step target for a point at time t is rescaled[t+1],
+    # so targets[r] = rescaled[r + valid_start + 1].
 
     # --- KD-tree (Chebyshev distance, p=np.inf) ----------------------
     tree = cKDTree(E)
@@ -448,7 +448,7 @@ def lzo_run(
                 nbr_indices = tree.query_ball_point(current, epsilon, p=np.inf)
                 if len(nbr_indices) >= min_neighbors:
                     break
-                if epsilon > 2.0:
+                if epsilon > 1.0 + 2.0 * escape_scale:
                     status = "failed"
                     break
             if status != "ok":
@@ -463,7 +463,7 @@ def lzo_run(
                 nbr_indices = tree.query_ball_point(current, epsilon, p=np.inf)
                 if len(nbr_indices) >= min_neighbors:
                     break
-                if epsilon > 2.0:
+                if epsilon > 1.0 + 2.0 * escape_scale:
                     status = "failed"
                     break
             if status != "ok":
@@ -487,14 +487,16 @@ def lzo_run(
             noise_std = np.sqrt(variances) * (noise_pct / 100.0)
             newpoint += rng.normal(0.0, noise_std, size=n_vars)
 
+        # Write output BEFORE escape check (matches C: output newcast,
+        # then test for region escape and exit).
+        out[step_done] = newpoint
+        final_eps = epsilon
+        eps_history[step_done] = epsilon
+
         # Escape check: C uses > 2 or < -1 after rescaling (data in [0,1])
         if np.any(newpoint < -escape_scale) or np.any(newpoint > 1.0 + escape_scale):
             status = "escaped"
             break
-
-        out[step_done] = newpoint
-        final_eps = epsilon
-        eps_history[step_done] = epsilon
 
         # Advance rolling state
         current = current.copy()
@@ -505,9 +507,15 @@ def lzo_run(
             ]
             current[block_lo + embed - 1] = newpoint[c]
 
-    n_steps_done = step_done if status != "ok" else n_steps
-    if status != "ok":
+    # "ok"      → all n_steps written
+    # "escaped" → step_done + 1 (the escaping point was written before break)
+    # "failed"  → step_done     (no point computed for the failed step)
+    if status == "ok":
+        n_steps_done = n_steps
+    elif status == "escaped":
         n_steps_done = step_done + 1
+    else:  # "failed"
+        n_steps_done = step_done
 
     out = out[:n_steps_done]
     eps_history = eps_history[:n_steps_done]
@@ -647,32 +655,25 @@ def lzo_test(
     E, valid_start = _build_embedding(rescaled, embed, delay)
 
     # Reference points (with refstep subsampling)
+    # C: clength = (CLENGTH <= LENGTH) ? CLENGTH - STEP : LENGTH - STEP
+    # C: loop: for (i = valid_start; i < clength; i += refstep)
+    # Here clength already incorporates the - step adjustment, so the
+    # arange stop must be clength (NOT clength - step).
     clength = (
         min(n_ref * refstep + step, n_times)
         if n_ref is not None
         else n_times
     )
-    # Actual number of reference points (C: clength = CLENGTH < LENGTH ?
-    #   CLENGTH - STEP : LENGTH - STEP)
-    # C code: hi = (embed-1)*delay, clength reference points i with
-    #   i from valid_start to clength - 1
     clength = min(clength, n_times - step)
-    n_ref_total = (
-        (clength - step - valid_start) // refstep
-        if n_ref is not None
-        else clength - valid_start
-    )
+
+    ref_orig_times = np.arange(valid_start, clength, refstep)
+    n_ref_total = len(ref_orig_times)
+
     if n_ref_total <= 0:
         raise ValueError(
             f"no valid reference points for clength={clength}, "
             f"valid_start={valid_start}, refstep={refstep}"
         )
-
-    ref_orig_times = (
-        np.arange(valid_start, clength - step - valid_start, refstep)
-        if n_ref is not None
-        else np.arange(valid_start, clength - step)
-    )
 
     # --- KD-tree ------------------------------------------------------
     tree = cKDTree(E)
@@ -728,7 +729,7 @@ def lzo_test(
         # Compute multi-step zeroth-order forecasts
         for istep in range(1, step + 1):
             h = istep - 1
-            y_all = rescaled[nbr_times_final + istep, :]
+            y_all = rescaled[nbr_times_final + istep, :]  # pyright: ignore[reportOptionalOperand]
             y_pred = y_all.mean(axis=0)
             y_true = rescaled[hi_orig + istep, :]
             error_sum[h] += (y_pred - y_true) ** 2
@@ -739,9 +740,9 @@ def lzo_test(
         hav_sum += y_ref
 
         if verbose_single:
-            h1_all = rescaled[nbr_times_final + 1, :]
+            h1_all = rescaled[nbr_times_final + 1, :]  # pyright: ignore[reportOptionalOperand]
             h1_pred = h1_all.mean(axis=0)
-            single_predictions.append(h1_pred)
+            single_predictions.append(h1_pred)  # pyright: ignore[reportOptionalMemberAccess]
 
     if pfound == 0:
         raise RuntimeError(
@@ -755,8 +756,6 @@ def lzo_test(
     hrms = np.sqrt(
         np.maximum(0.0, (rms_sum - pfound * hav**2) / (pfound - 1))
     )
-
-    comp_std = np.sqrt(variances)  # std of rescaled data ≈ 1.0
 
     forecast_errors = np.zeros((step, n_vars))
     abs_errors = np.zeros((step, n_vars))
