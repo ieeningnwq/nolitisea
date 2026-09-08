@@ -192,8 +192,8 @@ def poincare_section(
     # Phase 2 (sequential): walk the (typically much smaller) list of raw
     #   crossings and apply the noise-resistance / return-time debouncing.
     # Chunking is done by splitting t_range evenly; cKDTree is not involved,
-    # so thread backends still benefit from pure NumPy/Numba style work that
-    # releases the GIL.
+    # so thread backends still benefit from vectorised NumPy work that
+    # releases the GIL inside its C loops.
     import os
     if n_jobs == -1:
         n_workers = os.cpu_count() or 1

@@ -8,11 +8,10 @@ from nolitisea.utils.dist import pairwise_row_distance
 
 class TestDistWrapper(unittest.TestCase):
     def setUp(self):
-        # 测试样本 shape=(3,2)，强制float64，匹配jit签名
+        # Test samples shape=(3,2), float64
         self.x = np.array([[0.0, 0.0], [1.0, 2.0], [-1.0, 3.0]], dtype=np.float64)
         self.y = np.array([[0.0, 0.0], [4.0, 6.0], [2.0, -1.0]], dtype=np.float64)
 
-        # scipy逐行作为参考真值
         self.ref_cityblock = np.array(
             [
                 cityblock(self.x[0], self.y[0]),
@@ -57,7 +56,6 @@ class TestDistWrapper(unittest.TestCase):
             pairwise_row_distance(self.x, self.y, metric="cosine")
 
     def test_dist_one_sample(self):
-        # 单个样本 (1,3)
         x1 = np.array([[1.0, 2.0, 3.0]], dtype=np.float64)
         y1 = np.array([[4.0, 6.0, 8.0]], dtype=np.float64)
         d = pairwise_row_distance(x1, y1, metric="chebyshev")

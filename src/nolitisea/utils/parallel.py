@@ -26,9 +26,8 @@ def parallel_map(func, items, *, n_jobs=None, backend="thread"):
         any other positive integer caps the pool size.
     backend : {"thread", "process"}, optional
         Executor backend.  ``"thread"`` suits workers that release the
-        GIL (NumPy/SciPy kernels, numba ``nogil`` code); ``"process"``
-        suits pure-Python work but pays pickling and spawn costs,
-        notably on Windows.
+        GIL (NumPy/SciPy C kernels); ``"process"`` suits pure-Python
+        work but pays pickling and spawn costs, notably on Windows.
 
     Returns
     -------
