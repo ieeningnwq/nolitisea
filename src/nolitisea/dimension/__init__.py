@@ -1,3 +1,3 @@
-"""Dimension and entropy estimation: d2, c1, boxcount, post-processing, fsle."""
+"""Dimension and entropy estimation: d2, c1, c2."""
 
-from . import c1, c2_post, d2, fsle
+from . import c1, c2, d2  # noqa: F401

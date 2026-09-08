@@ -1,4 +1,4 @@
-"""Tests for the TISEAN ``d2`` rewrite in nolitisea.dimension.d2."""
+"""Tests for nolitisea.dimension.d2."""
 
 import unittest
 
