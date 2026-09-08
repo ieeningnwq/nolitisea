@@ -6,7 +6,7 @@ Covers all three local-linear-forecast functions:
 * :func:`lfo_test` — adaptive epsilon (``lfo`` / ``lfo-test``)
 * :func:`lfo_run` — iterative trajectory extrapolation (``lfo-run``)
 
-Brute-force helpers re-implement the TISEAN contracts from scratch
+Brute-force helpers re-implement the same contracts from scratch
 (O(N^2) neighbour search, same causality window, same normalisation)
 so we can verify the production code agrees with a reference on the
 critical ``lo = i - causal + 1`` /

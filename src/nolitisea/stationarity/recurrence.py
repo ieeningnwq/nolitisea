@@ -236,8 +236,8 @@ def recurr(series, embed=2, delay=1, eps=None, fraction=1.0, seed=0):
     Each component is rescaled to ``[0, 1]`` independently, the multivariate delay embedding is
     built, and every pair of embedding vectors whose Chebyshev
     distance is below ``eps`` is reported as a recurrence.  The
-    box-assisted search of the original program is replaced by a
-    single :func:`scipy.spatial.cKDTree.query_ball_tree` call.
+    neighbour search uses a single
+    :func:`scipy.spatial.cKDTree.query_ball_tree` call.
 
     Parameters
     ----------
@@ -250,15 +250,16 @@ def recurr(series, embed=2, delay=1, eps=None, fraction=1.0, seed=0):
     delay : int, default 1
         Time delay between consecutive embedding coordinates.
     eps : float or None
-        Recurrence threshold in the units of the input data.  ``None`` (default) uses the C default, the data
-        interval divided by 1000.  As in C the threshold is expressed
-        in the rescaled ``[0, 1]`` units: a user-supplied ``eps`` is
-        divided by the largest component range.
+        Recurrence threshold in the units of the input data.  ``None``
+        (default) uses the data interval divided by 1000.  The
+        threshold is expressed in the rescaled ``[0, 1]`` units: a
+        user-supplied ``eps`` is divided by the largest component
+        range.
     fraction : float, default 1.0
         Fraction of eligible recurrence pairs to keep.  ``1.0`` keeps every pair (deterministic); smaller
-        values subsample uniformly.  The original program subsamples
-        with its own PRNG, so the exact pairs kept for
-        ``fraction < 1``; use ``fraction = 1.0`` for a
+        values subsample uniformly with the seeded generator, so the
+        exact pairs kept for ``fraction < 1`` are
+        implementation-specific; use ``fraction = 1.0`` for a
         reproducible comparison.
     seed : int, default 0
         Seed for the subsampling generator (only used when
@@ -285,10 +286,10 @@ def recurr(series, embed=2, delay=1, eps=None, fraction=1.0, seed=0):
     Notes
     -----
     ``cKDTree`` uses a closed ball (``<= eps``).  On
-    continuous data the two coincide, so this rewrite matches a strict
-    transcription there; on quantised data the boundary pairs may
-    differ, consistent with the documented convention of the other
-    TISEAN rewrites in this package.
+    continuous data the closed-ball threshold coincides with a strict
+    comparison; on quantised data the boundary pairs may
+    differ, consistent with the convention used
+    throughout this package.
 
     References
     ----------
@@ -331,16 +332,14 @@ def recurr(series, embed=2, delay=1, eps=None, fraction=1.0, seed=0):
     eps_rescaled = 1.0e-3 if eps is None else abs(float(eps)) / maxmax
 
     # Interleaved multivariate delay embedding (row r <-> base time
-    # r + (embed-1)*delay); the C coordinate order is reproduced, so
-    # the Chebyshev distance is identical.
+    # r + (embed-1)*delay); the Chebyshev distance is identical.
     E = lag_block_delay_embed(arr, embed, delay)
     n_points = E.shape[0]
 
     tree = cKDTree(E)
     # query_ball_tree returns, for every point, every neighbour within
     # eps_rescaled (Chebyshev); keep the upper triangle so each pair is
-    # reported once, matching the C output order (n+1, element+1 with
-    # element > n).
+    # reported once.
     nb_lists = tree.query_ball_tree(tree, eps_rescaled, p=np.inf)
     i_list = []
     j_list = []

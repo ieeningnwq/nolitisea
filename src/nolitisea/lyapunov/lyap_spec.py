@@ -29,9 +29,8 @@ def _lyap_spec_fit_worker(bound, E, arr, dists_all, idxs_all, n_neighbors,
     ``lstsq`` fit), so the chunk is independent of the tangent-space
     evolution and the result is identical for every execution order.
 
-    The delay between consecutive embedding coordinates is fixed at 1,
-    matching the C program (which hardcodes ``DELAY = 1``); the
-    tangent-space shift in :func:`lyap_spec` is only valid for that
+    The delay between consecutive embedding coordinates is fixed at 1;
+    the tangent-space shift in :func:`lyap_spec` is only valid for that
     value.
     """
     start, stop = bound
@@ -57,9 +56,9 @@ def _lyap_spec_fit_worker(bound, E, arr, dists_all, idxs_all, n_neighbors,
         if i.size > n_neighbors:
             d = d[:n_neighbors]
             i = i[:n_neighbors]
-        # Fit the local linear model with an explicit intercept,
-        # replicating the C program exactly.  Only the gradient
-        # columns (``beta[1:]``) affect the tangent-space evolution.
+        # Fit the local linear model with an explicit intercept.
+        # Only the gradient columns (``beta[1:]``) affect the
+        # tangent-space evolution.
         target_indices = i + embed  # delay = 1
         X_aug = np.column_stack([np.ones(i.size), E[i]])
         for dd in range(n_vars):
@@ -82,7 +81,7 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
         Input series.  A 1-D array is treated as a single component;
         a 2-D array must have shape ``(n_times, n_vars)``.
     embed : int
-        Embedding dimension *per component* (C option ``-m DIM,EMB``).
+        Embedding dimension *per component*.
         The total number of Lyapunov exponents returned is
         ``alldim = n_vars * embed``.
 
@@ -99,8 +98,8 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
         a continuous-time system yields exponents per unit time.  For
         discrete maps leave ``dt = 1``.
     n_neighbors : int, default 30
-        Number of nearest neighbours for each local linear model (C
-        option ``-k``).  Must be at least ``alldim + 1``.
+        Number of nearest neighbours for each local linear model.
+        Must be at least ``alldim + 1``.
     seed : int, default 0
         Seed for the initial random perturbation matrix.
     n_jobs : int, optional (default = None)
@@ -179,9 +178,9 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
             f"need at least {alldim + 1} for a well-determined linear model"
         )
 
-    # Rescale each component to [0, 1]; the C program normalises every
-    # component independently so that components with vastly different
-    # scales contribute equally to the Chebyshev distance.
+    # Rescale each component to [0, 1]; every component is normalised
+    # independently so that components with vastly different scales
+    # contribute equally to the Chebyshev distance.
     for c in range(n_vars):
         comp = arr[:, c]
         rng = np.ptp(comp)
@@ -190,9 +189,8 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
         arr[:, c] = (comp - comp.min()) / rng
 
     # Delay-coordinate embedding.  Coordinates are interleaved:
-    # [comp0@delay0, comp1@delay0, ..., comp0@delay1, comp1@delay1, ...],
-    # matching the C program's index computation.  The delay is fixed
-    # at 1 (see the C source, which hardcodes ``DELAY = 1``).
+    # [comp0@delay0, comp1@delay0, ..., comp0@delay1, comp1@delay1, ...].
+    # The delay is fixed at 1.
     E = lag_block_delay_embed(arr, embed, 1)
 
     # A neighbor at E-row ``i_c`` has original base time
@@ -218,7 +216,7 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
     tree = cKDTree(E[:n_ref_max])
 
     # Initial perturbation matrix: random, then QR-orthogonalised.
-    # The C Gram-Schmidt operates on ROWS of ``delta``, so we QR the
+    # Gram-Schmidt operates on ROWS of ``delta``, so we QR the
     # TRANSPOSE: ``delta.T = Q @ R`` gives the stretch factors on the
     # diagonal of R, and ``Q.T`` has orthonormal rows.
     rng = np.random.default_rng(seed)
@@ -235,7 +233,7 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
 
     # --- Phase 1: data-only local linear models (parallel) ----------
     # A single batched query retrieves every reference point's neighbour
-    # list at once (the C loop queried one point at a time).  The per-step
+    # list at once.  The per-step
     # ``lstsq`` fits depend only on the data, not on the perturbation
     # matrix, so they are distributed over reference-point chunks; each
     # worker returns its slice of results and the caller assembles them
@@ -319,8 +317,7 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
 
     exponents = log_sum / count_out / dt
     # scipy.linalg.qr places the largest stretch on the first diagonal
-    # entry, so ``exponents`` is already in descending order (the
-    # C program prints them in the same order).
+    # entry, so ``exponents`` is already in descending order.
 
     # Kaplan--Yorke dimension:
     # D_KY = k + (sum_{j=1}^k lambda_j) / |lambda_{k+1}|

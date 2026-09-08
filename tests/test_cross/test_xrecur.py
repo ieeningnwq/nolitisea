@@ -200,7 +200,7 @@ class TestCrossRecurrence(unittest.TestCase):
             cross_recurrence(
                 np.column_stack([a, a]), b, dim=2
             )
-        # unequal lengths are allowed (Fortran -l / -L)
+        # unequal lengths are allowed
         mixed = cross_recurrence(a, b[:40], dim=2, eps=0.6)
         self.assertEqual(mixed.ndim, 2)
         self.assertEqual(mixed.shape[1], 2)

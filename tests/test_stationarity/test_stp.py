@@ -8,7 +8,7 @@ from nolitisea.stationarity.stp import stp
 
 
 def _stp_brute(y, dim, delay, ndt, idt, perc, meps=1000):
-    """Literal transcription of the ``stplot`` subroutine in stp.f.
+    """Literal transcription of the histogram-binning algorithm.
 
     Bins the Chebyshev distance between each embedding vector and its
     time-shifted copy, then reads the distance at each cumulative
@@ -37,7 +37,7 @@ def _stp_brute(y, dim, delay, ndt, idt, perc, meps=1000):
         for ifrac in range(1, nfrac + 1):
             need = n_pairs * ifrac / float(nfrac)
             s = 0
-            ieps = meps  # if never reached, the Fortran loop leaves ieps=meps
+            ieps = meps  # if never reached, ieps stays at meps
             for k in range(1, meps + 1):
                 s += ihist[k]
                 if s >= need:

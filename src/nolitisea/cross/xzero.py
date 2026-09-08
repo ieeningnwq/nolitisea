@@ -1,37 +1,34 @@
-"""Locally zeroth-order cross-prediction (TISEAN ``xzero``).
+"""Locally zeroth-order cross-prediction.
 
-Python rewrite of ``xzero.c`` (Hegger) using a KD-tree neighbour
-search.  The program estimates how well one scalar series can be
-forecast from another: delay vectors of the second series ``b`` are
+Implemented with a KD-tree neighbour search, the program estimates
+how well one scalar series can be forecast from another: delay vectors
+of the second series ``b`` are
 located among the delay vectors of the first series ``a`` and the
 neighbours' successors in ``a`` are averaged as the zeroth-order
 forecast of ``b``.  The relative rms cross forecast error is reported
 for forecast horizons ``1 .. n_steps``.
 
-Both series are rescaled to ``[0, 1]`` first (TISEAN ``rescale_data``)
-and the errors are normalized by the standard deviation of the
-rescaled second series (TISEAN ``variance``), so the reported error is
+Both series are rescaled to ``[0, 1]`` first and the errors are
+normalized by the standard deviation of the rescaled second series,
+so the reported error is
 ``1`` when the forecast is no better than a random guess and ``0`` for
 a perfect forecast.
 
-Conventions of this rewrite
----------------------------
+Conventions
+-----------
 * Delay vectors are formed backwards: the vector ending at time ``i``
-  is ``(x[i-(dim-1)*delay], ..., x[i-delay], x[i])``, matching the
-  C ``find_neighbors`` which reads the query components
-  ``coord[-k*delay]`` and the data components ``s[element-k*delay]``.
+  is ``(x[i-(dim-1)*delay], ..., x[i-delay], x[i])``.
 * A neighbour is kept when its maximum-norm distance is smaller than
-  or equal to ``eps`` (the C check ``dx > eps -> skip``); the KD-tree
-  ball query returns exactly this set.
+  or equal to ``eps``; the KD-tree ball query returns exactly this
+  set.
 * A reference point is processed once at least ``n_neighbors``
   neighbours are found; points with too few neighbours are retried in
-  the next pass with ``eps`` grown by ``eps_factor``.  The C program
-  loops forever when even the full data range cannot supply enough
-  neighbours; this rewrite raises ``RuntimeError`` once ``eps``
-  reaches ``1`` (the largest possible distance of data in ``[0, 1]``).
-* With ``-r`` the C program interprets the given radius in the units
-  of the original data and divides it by the average of the two data
-  ranges; the default radius ``1e-3`` is already in rescaled units
+  the next pass with ``eps`` grown by ``eps_factor``.  A
+  ``RuntimeError`` is raised once ``eps`` reaches ``1`` (the largest
+  possible distance of data in ``[0, 1]``).
+* An explicitly given ``eps`` is interpreted in the units of the
+  original data and divided by the average of the two data ranges;
+  the default radius ``1e-3`` is already in rescaled units
   (``(data interval) / 1000`` in original units).
 """
 import numpy as np
@@ -72,7 +69,7 @@ def cross_zeroth(a, b, dim=3, delay=1, eps=None, *, n_neighbors=30,
         Largest forecast horizon; the error is reported for every
         horizon ``1 .. n_steps``.
     n_refs : int or None
-        Number of reference points to use (C option ``-n``).  ``None``
+        Number of reference points to use.  ``None``
         uses the whole series.  The reference times are
         ``(dim-1)*delay .. n_refs - n_steps - 1``.
 
@@ -91,7 +88,7 @@ def cross_zeroth(a, b, dim=3, delay=1, eps=None, *, n_neighbors=30,
         for the requested embedding, or a constant series.
     RuntimeError
         When even the full data range cannot provide ``n_neighbors``
-        neighbours (the C program would loop forever in this case).
+        neighbours.
     """
     x = np.asarray(a, dtype=np.float64).ravel()
     y = np.asarray(b, dtype=np.float64).ravel()
@@ -145,8 +142,8 @@ def cross_zeroth(a, b, dim=3, delay=1, eps=None, *, n_neighbors=30,
         )
 
     # Delay vectors written in forward component order; row k of ``Ea``
-    # ends at time ``emb_off + k`` (C ``make_box`` over
-    # ``[emb_off, LENGTH - STEP)``) and row ``t`` of ``Q`` ends at the
+    # ends at time ``emb_off + k`` (rows span times
+    # ``[emb_off, n - n_steps)``) and row ``t`` of ``Q`` ends at the
     # reference time ``emb_off + t``.  The maximum norm is invariant
     # under the component order, so forward and backward layouts agree.
     offs = np.arange(dim) * delay

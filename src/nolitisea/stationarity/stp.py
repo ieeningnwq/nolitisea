@@ -1,22 +1,21 @@
-"""Space-time separation plot (TISEAN ``stp``).
+"""Space-time separation plot.
 
-Python rewrite of the TISEAN Fortran program ``stp.f`` (Hegger, Kantz
-and Schreiber, *Chaos* 9, 413 (1999)).  For every time shift ``t`` it
-accumulates the Chebyshev distance between each embedding vector and
-its ``t``-shifted copy into a fixed-bin histogram, then reads off the
-distance at several cumulative fractions.  The result is the curve of
-space-time separation used to choose a Theiler window.
+For every time shift ``t`` the Chebyshev distance between each
+embedding vector and its ``t``-shifted copy is accumulated into a
+fixed-bin histogram, from which the distance at several cumulative
+fractions is read off.  The result is the curve of space-time
+separation used to choose a Theiler window.
 """
 
 import numpy as np
 
 __all__ = ["stp"]
 
-# Histogram bin count (Fortran parameter ``meps``).
+# Histogram bin count.
 _N_BINS = 1000
-# Cap on the number of time steps (Fortran parameter ``mdt``).
+# Cap on the number of time steps.
 _MAX_TIME = 500
-# Cap on the number of fraction levels (Fortran parameter ``mfrac``).
+# Cap on the number of fraction levels.
 _MAX_FRAC = 100
 
 
@@ -29,24 +28,21 @@ def stp(series, dim, delay, max_time=100, resolution=1, fraction=0.05,
     series : array_like
         Input scalar series (1-D).
     dim : int
-        Embedding dimension (Fortran ``m``, option ``-m``); must be >= 1.
+        Embedding dimension; must be >= 1.
     delay : int
-        Time delay (Fortran ``id``, option ``-d``); must be >= 1.
+        Time delay; must be >= 1.
     max_time : int, default 100
-        Number of time shifts evaluated (Fortran ``ndt``, option ``-t``);
-        capped at 500 (Fortran ``mdt``).
+        Number of time shifts evaluated; capped at 500.
     resolution : int, default 1
-        Time resolution: the ``t``-th shift is ``t * resolution`` samples
-        (Fortran ``idt``, option ``-#``); must be >= 1.
+        Time resolution: the ``t``-th shift is ``t * resolution`` samples;
+        must be >= 1.
     fraction : float, default 0.05
-        Step between cumulative fraction levels (Fortran ``perc``,
-        option ``-%``).  The number of levels is
+        Step between cumulative fraction levels.  The number of levels is
         ``min(100, int(1 / fraction))`` and the levels are
         ``1/n_frac, 2/n_frac, ..., 1.0``.
     n_bins : int, default 1000
-        Number of distance histogram bins over ``[0, epsmax]`` (Fortran
-        ``meps``); the returned distances are quantised to
-        ``epsmax / n_bins``.
+        Number of distance histogram bins over ``[0, epsmax]``; the
+        returned distances are quantised to ``epsmax / n_bins``.
 
     Returns
     -------
@@ -67,11 +63,10 @@ def stp(series, dim, delay, max_time=100, resolution=1, fraction=0.05,
 
     Notes
     -----
-    The Fortran bins distances with ``int(meps * dis / epsmax) + 1``
-    (clamped to ``meps``); the separation at fraction ``f`` is the upper
-    edge of the first bin whose cumulative count reaches
-    ``f * n_pairs``.  This rewrite reproduces that bin-based quantile
-    exactly, so it agrees with ``stp.f`` to the bin resolution.
+    Distances are binned with ``int(n_bins * dis / epsmax) + 1``
+    (clamped to ``n_bins``); the separation at fraction ``f`` is the
+    upper edge of the first bin whose cumulative count reaches
+    ``f * n_pairs``.
 
     References
     ----------
@@ -140,10 +135,9 @@ def stp(series, dim, delay, max_time=100, resolution=1, fraction=0.05,
         cum = np.cumsum(ihist, dtype=np.float64)
 
         # First bin whose cumulative count reaches need = n_pairs * f.
-        # The Fortran evaluates ``need = (n_pairs * ifrac) / nfrac``
-        # (integer product first, then real division); mirror that
-        # order so the threshold lands on the same side of every integer
-        # cumulative count as the reference.
+        # Evaluate ``need = (n_pairs * ifrac) / n_frac`` with the
+        # integer product first, then real division, so the threshold
+        # lands on the same side of every integer cumulative count.
         ifrac = np.arange(1, n_frac + 1, dtype=np.int64)
         needs = (n_pairs * ifrac).astype(np.float64) / n_frac
         ieps = np.searchsorted(cum, needs, side="left") + 1  # 1-based

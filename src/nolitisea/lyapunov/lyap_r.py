@@ -11,7 +11,7 @@ from nolitisea.utils.rescale import rescale_data
 
 __all__ = ["lyap_r"]
 
-# Radius growth factor of the C ladder (C main loop: ``eps *= 1.1``).
+# Radius growth factor of the ladder (main loop: ``eps *= 1.1``).
 _EPS_FAC = 1.1
 # References processed per fallback block; bounds the memory of the
 # (rows, n_elem) query result.

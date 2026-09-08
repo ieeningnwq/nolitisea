@@ -4,7 +4,7 @@ import math
 import unittest
 
 import numpy as np
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree  # pyright: ignore[reportAttributeAccessIssue]
 
 from nolitisea.core.embed import lag_block_delay_embed
 from nolitisea.generate.henon import henon
@@ -12,12 +12,12 @@ from nolitisea.lyapunov.lyap_r import lyap_r
 from nolitisea.utils.rescale import rescale_data
 
 
-def _c_transcription(series, dim, delay, max_steps, theiler=0):
-    """Literal transcription of lyap_r.c.
+def _lyap_r_transcription(series, dim, delay, max_steps, theiler=0):
+    """Literal transcription of the documented algorithm.
 
-    Adaptive epsilon ladder with iterated growth factor 1.1 and the C
+    Adaptive epsilon ladder with iterated growth factor 1.1 and the
     strict-``<`` neighbour choice; candidates are scanned in ascending
-    index order, which coincides with the C box-scan order whenever
+    index order, which coincides with the box-scan order whenever
     distances are distinct (generic, non-quantized data).
     """
     x = np.asarray(series, dtype=np.float64)
@@ -74,7 +74,7 @@ def _c_transcription(series, dim, delay, max_steps, theiler=0):
 def _reference_brute(series, dim, delay, max_steps, theiler=0):
     """Reference implementation of the documented algorithm.
 
-    Explicit epsilon ladder as in C, but candidates and their distances
+    Explicit epsilon ladder, but candidates and their distances
     come from the same KD-tree the rewrite uses; the kept neighbour
     minimises (distance, index) lexicographically among eligible
     candidates with a positive separation.
@@ -123,7 +123,7 @@ def _reference_brute(series, dim, delay, max_steps, theiler=0):
 
 
 class TestLyapRBruteForce(unittest.TestCase):
-    def test_continuous_matches_c_transcription(self):
+    def test_continuous_matches_transcription(self):
         rng = np.random.default_rng(7)
         s = np.cumsum(rng.standard_normal(300))
         for theiler in [0, 3]:
@@ -135,20 +135,21 @@ class TestLyapRBruteForce(unittest.TestCase):
                 res["divergence"], brute, rtol=1e-12
             )
 
-    def test_huge_eps_matches_c_transcription(self):
+    def test_huge_eps_matches_transcription(self):
         # A radius covering the whole attractor must only remove far
-        # references; close ones keep the C neighbour exactly.
+        # references; close ones keep the same neighbour exactly.
         rng = np.random.default_rng(7)
         s = np.cumsum(rng.standard_normal(300))
         res = lyap_r(s, dim=3, delay=2, max_steps=8, theiler=3, eps=1e9)
-        brute = _c_transcription(s, dim=3, delay=2, max_steps=8, theiler=3)
+        brute = _lyap_r_transcription(s, dim=3, delay=2, max_steps=8, theiler=3)
         np.testing.assert_allclose(res["divergence"], brute, rtol=1e-12)
 
     def test_quantized_matches_reference(self):
         # Rounded data contains exact duplicate embeddings; the ladder
         # and smallest-index tie rule must follow the documented
-        # algorithm exactly (the C box-scan tie order is an
-        # implementation detail and deviates here by design).
+        # algorithm exactly (the box-scan tie order of the reference
+        # implementation is an implementation detail and deviates here
+        # by design).
         rng = np.random.default_rng(7)
         sd = np.round(np.cumsum(rng.standard_normal(240)))
         res = lyap_r(sd, dim=3, delay=1, max_steps=8, theiler=2)

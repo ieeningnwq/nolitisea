@@ -1,7 +1,7 @@
 """Tests for ``nolitisea.prediction.local_zeroth`` (``lzo_gm``, ``lzo_run``,
 ``lzo_test``).
 
-The brute-force helpers here re-implement the TISEAN causal-window logic
+The brute-force helpers here re-implement the causal-window logic
 from scratch so we can verify that the production code and the reference
 agree on the critical `lo = i - causal + 1` /
 `hi = i + causal + (embed-1)*delay - 1` exclusion interval.

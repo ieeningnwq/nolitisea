@@ -46,12 +46,12 @@ def _fsle_evolve_worker(pn, x, first, mindx_arr, eps0, eps_levels,
         if act >= length or nbr >= length or mindx <= 0.0:
             continue
 
-        # Level index of the initial distance (C: ``which``).
+        # Level index of the initial distance.
         which = int(np.log(mindx / eps0) / log_fac)
 
         # If the initial distance is below the first level, advance
-        # until the 1D separation reaches ``eps_levels[0]`` (C: which < 0
-        # branch).
+        # until the 1D separation reaches ``eps_levels[0]`` (the
+        # ``which < 0`` case).
         done = False
         if which < 0:
             while True:
@@ -70,7 +70,7 @@ def _fsle_evolve_worker(pn, x, first, mindx_arr, eps0, eps_levels,
                 continue
             which = int(np.log(mindx / eps0) / log_fac)
 
-        # Evolve through successive radius levels (C: for loop).
+        # Evolve through successive radius levels.
         for i in range(max(which, 0), howmany - 1):
             stime = 0
             while True:

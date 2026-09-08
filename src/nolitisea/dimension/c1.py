@@ -3,7 +3,7 @@
 from functools import partial
 
 import numpy as np
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree  # pyright: ignore[reportAttributeAccessIssue]
 
 from nolitisea.core.embed import lag_block_delay_embed
 from nolitisea.utils.parallel import parallel_map
@@ -16,7 +16,7 @@ _TINY = 1e-20
 _NEIGH_BUDGET = 1 << 20
 _MAX_SWEEPS = 64
 
-# Digamma table of the Fortran ``psi`` function (values for k = 0..20).
+# Digamma table (values for k = 0..20).
 _PSI_TABLE = (
     0.0,
     -0.57721566490, 0.42278433509, 0.92278433509, 1.25611766843,
@@ -28,19 +28,18 @@ _PSI_TABLE = (
 
 
 def _psi(k):
-    """Digamma approximation of the Fortran ``psi`` function."""
+    """Digamma approximation."""
     if k <= 20:
         return _PSI_TABLE[k]
     return float(np.log(k) - 1.0 / (2.0 * k))
 
 
 def _embed_c1(data, m, delay):
-    """Order-``m`` embedding in the Fortran coordinate order.
+    """Order-``m`` embedding in the oldest-first coordinate order.
 
     Column blocks run from the oldest delay block to the newest, each
     block holding all components in file order; the first ``m`` columns
-    are exactly the coordinates entering the Fortran distance loop
-    (which caps the coordinate count at the total dimension ``m``).
+    are exactly the coordinates entering the distance computation.
 
     Returns ``(E, mt)`` where ``E`` has shape ``(n_points, m)`` and
     ``mt = (m - 1) // n_vars + 1`` is the delay span in steps.
@@ -64,7 +63,7 @@ def _c1_sweep_worker(centers, tree, eps, ncomp_eff, theiler, k):
     Chebyshev distance among the eligible neighbours within ``eps``
     (strictly), or ``None`` when fewer than ``k`` neighbours were
     found (the center is retried in the next sweep with ``eps``
-    multiplied by ``sqrt(2)``, as in the Fortran loop).
+    multiplied by ``sqrt(2)``).
     """
     data = tree.data
     candidate_lists = tree.query_ball_point(data[centers], r=eps, p=np.inf)
@@ -89,11 +88,11 @@ def _c1_sweep_worker(centers, tree, eps, ncomp_eff, theiler, k):
 
 def _d1_step(E, tree, sd, m, delay, mt, ncmin, theiler, kmax, pr, pl,
              rng, n_jobs, backend):
-    """One Fortran ``d1`` call for a single ladder step.
+    """One fixed-mass ladder step.
 
     Returns ``(pln, eln)``; ``eln`` is ``None`` when the requested mass
-    equals the previous one (``k == kpr``), in which case the Fortran
-    returns before searching and the caller skips the output.
+    equals the previous one (``k == kpr``), in which case the search is
+    skipped and the caller skips the output.
     """
     ncomp = E.shape[0]
     N0 = ncomp - 2 * theiler - 1
@@ -101,7 +100,7 @@ def _d1_step(E, tree, sd, m, delay, mt, ncmin, theiler, kmax, pr, pl,
     kpr = int(np.exp(pr) * N0) + 1
     k = int(np.exp(pl) * N0) + 1
     if k > kmax:
-        # Fortran: ncomp = real(N0) * real(kmax) / k + 2 * nmin + 1
+        # ncomp = real(N0) * real(kmax) / k + 2 * nmin + 1
         # assigned to an INTEGER variable (truncation).
         N = int(N0 * kmax / k)
         if N < 1:
@@ -206,7 +205,8 @@ def c1(
         Ladder resolution, values per octave.
     kmax : int
         Maximal number of neighbours.
-        Larger requested masses are clamped with the Fortran point-count reduction.
+        Larger requested masses are clamped by reducing the effective
+        point count.
     seed : int
         Seed for the random center permutation.
     n_jobs : int, optional (default = None)
@@ -317,10 +317,9 @@ def c1(
                 E, tree, sd, m, delay, mt, n_centers, theiler, kmax,
                 pr, pl, rng, n_jobs, backend,
             )
-            # The Fortran main program skips the output whenever the
-            # corrected mass repeats the previous one (this also covers
-            # the clamped tail of the ladder, which recomputes the same
-            # mass every step).
+            # The output is skipped whenever the corrected mass repeats
+            # the previous one (this also covers the clamped tail of the
+            # ladder, which recomputes the same mass every step).
             if eln is not None and pln != pr:
                 eps_list.append(float(np.exp(eln)))
                 mass_list.append(float(np.exp(pln)))

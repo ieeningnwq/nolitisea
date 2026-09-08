@@ -101,7 +101,7 @@ def embedded_mutual_information(series, max_lag, n_bins=16):
     between ``series[:-tau]`` and ``series[tau:]`` is computed via
     :func:`mutual_information` using an equi-width histogram with
     ``n_bins`` bins.  The result is the classic delay-selection curve
-    used by TISEAN's ``mutual`` command (Fraser & Swinney 1986).
+    of Fraser & Swinney (1986).
 
     Parameters
     ----------

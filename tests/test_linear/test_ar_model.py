@@ -66,11 +66,11 @@ class TestUnivariateHandComputed(unittest.TestCase):
         self.assertAlmostEqual(fit["average_forecast_error"], expected_fe, places=12)
 
 
-class TestMatchesTiseanLayout(unittest.TestCase):
-    """Structural checks against a literal transcription of the C loops."""
+class TestMatchesDelayLayout(unittest.TestCase):
+    """Structural checks against a literal transcription of the loops."""
 
-    def test_matches_c_loop_transcription(self):
-        """Normal equations built with the exact C indexing agree."""
+    def test_matches_loop_transcription(self):
+        """Normal equations built with the exact loop indexing agree."""
         rng = np.random.default_rng(3)
         n, dim, order = 120, 2, 3
         s = rng.standard_normal((n, dim))

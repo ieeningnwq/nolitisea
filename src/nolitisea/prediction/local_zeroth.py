@@ -321,20 +321,18 @@ def lzo_run(
     knn_mode : bool, default False
         If ``True``, accumulate epsilon across iterations, sort
         neighbours by distance, and always use exactly
-        ``min_neighbors`` nearest neighbours (C ``-K`` flag,
-        ``setsort=1``).  If ``False``, use all neighbours within the
-        adaptive epsilon ball.
+        ``min_neighbors`` nearest neighbours.  If ``False``, use all
+        neighbours within the adaptive epsilon ball.
     noise_pct : float, default 0.0
-        Standard deviation of Gaussian noise to add to each forecast
-        (as a percentage of each component's variance, matching the C
-        ``-%`` option).  Zero means no noise.
+        Standard deviation of Gaussian noise to add to each forecast,
+        as a percentage of each component's variance.  Zero means no
+        noise.
     seed : int or None, default None
         Random seed for reproducible noise injection.  ``None`` means
         unpredictable noise.
     escape_scale : float, default 2.0
         Escape threshold.  A forecast whose rescaled value lies outside
         ``[-escape_scale, 1 + escape_scale]`` terminates the iteration.
-        The C default is ``2.0``, which matches this default.
 
     Returns
     -------
@@ -419,7 +417,7 @@ def lzo_run(
     # --- epsilon setup --------------------------------------------
     eps_start = float(eps0) if eps0 is not None else 1.0 / 1000.0
 
-    # knn_mode: accumulate epsilon across steps (C setsort=1 mode)
+    # knn_mode: accumulate epsilon across steps
     if knn_mode:
         epsilon_accum = eps_start / eps_factor
     else:
@@ -438,9 +436,8 @@ def lzo_run(
     for step_done in range(n_steps):
         # Adaptive epsilon expansion
         if knn_mode:
-            # C: epsilon = epsilon0 / (count * EPSF) initially, then
-            # accumulate and multiply.  Simplified: start at current
-            # accumulated value (pre-divided by factor), then expand.
+            # Start at the current accumulated value (pre-divided by
+            # the factor), then expand until enough neighbours.
             epsilon = epsilon_accum
             nbr_indices = None
             while True:
@@ -453,7 +450,7 @@ def lzo_run(
                     break
             if status != "ok":
                 break
-            # Accumulate epsilon for next step (C: epsilon0 += epsilon)
+            # Accumulate epsilon for the next step.
             epsilon_accum = epsilon
         else:
             epsilon = eps_start / eps_factor
@@ -473,7 +470,7 @@ def lzo_run(
 
         if knn_mode:
             # Sort neighbors by Chebyshev distance and take exactly
-            # min_neighbors (C sort() function behaviour)
+            # min_neighbors
             nbr_points = E[nbr_indices]
             dists = np.max(np.abs(nbr_points - current), axis=1)
             order = np.argsort(dists)
@@ -487,13 +484,13 @@ def lzo_run(
             noise_std = np.sqrt(variances) * (noise_pct / 100.0)
             newpoint += rng.normal(0.0, noise_std, size=n_vars)
 
-        # Write output BEFORE escape check (matches C: output newcast,
-        # then test for region escape and exit).
+        # Write output BEFORE the escape check: the new point is
+        # recorded, then the region escape test may terminate.
         out[step_done] = newpoint
         final_eps = epsilon
         eps_history[step_done] = epsilon
 
-        # Escape check: C uses > 2 or < -1 after rescaling (data in [0,1])
+        # Escape check on the rescaled values (data in [0, 1])
         if np.any(newpoint < -escape_scale) or np.any(newpoint > 1.0 + escape_scale):
             status = "escaped"
             break
@@ -587,7 +584,7 @@ def lzo_test(
         Temporal stride between reference points.
     verbose_single : bool, default False
         If ``True``, include per-reference-point forecast values in
-        the output (C ``-V 2`` verbosity).
+        the output.
 
     Returns
     -------
@@ -654,10 +651,8 @@ def lzo_test(
     # --- delay embedding -----------------------------------------------
     E, valid_start = _build_embedding(rescaled, embed, delay)
 
-    # Reference points (with refstep subsampling)
-    # C: clength = (CLENGTH <= LENGTH) ? CLENGTH - STEP : LENGTH - STEP
-    # C: loop: for (i = valid_start; i < clength; i += refstep)
-    # Here clength already incorporates the - step adjustment, so the
+    # Reference points (with refstep subsampling).
+    # clength already incorporates the - step adjustment, so the
     # arange stop must be clength (NOT clength - step).
     clength = (
         min(n_ref * refstep + step, n_times)
@@ -734,7 +729,7 @@ def lzo_test(
             y_true = rescaled[hi_orig + istep, :]
             error_sum[h] += (y_pred - y_true) ** 2
 
-        # Accumulate for normalisation (use step=1 target, same as C)
+        # Accumulate for normalisation (use the step=1 target).
         y_ref = rescaled[hi_orig + 1, :]
         rms_sum += y_ref**2
         hav_sum += y_ref
@@ -752,7 +747,7 @@ def lzo_test(
 
     # Compute forecast errors relative to target component std
     hav = hav_sum / pfound
-    # C: hrms[j] = sqrt(hrms[j]/(pfound-1) - hav[j]^2 * pfound/(pfound-1))
+    # Sample standard deviation of the step-1 targets.
     hrms = np.sqrt(
         np.maximum(0.0, (rms_sum - pfound * hav**2) / (pfound - 1))
     )

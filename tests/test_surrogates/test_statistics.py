@@ -1,6 +1,6 @@
 """Tests for the statistics in ``nolitisea.surrogates.statistics``.
 
-The brute-force helper transcribes the Fortran ``fcerror`` routine with
+The brute-force helper transcribes the ``fcerror`` routine with
 an explicit O(N^2) Chebyshev neighbour search so the cKDTree-based
 production code can be validated on continuous data (exact agreement)
 as well as on quantized data containing duplicate delay vectors.
@@ -19,9 +19,9 @@ from nolitisea.surrogates.statistics import predict_stat, time_reversibility
 
 
 def _brute_fcerror(x, dim, delay, n_forecast, eps):
-    """O(N^2) transcription of the Fortran ``fcerror`` routine.
+    """O(N^2) transcription of the ``fcerror`` routine.
 
-    Builds the delay vectors explicitly (oldest-first Fortran order),
+    Builds the delay vectors explicitly (oldest-first order),
     finds all Chebyshev ``eps``-neighbours by exhaustive comparison,
     drops the reference point itself, and averages the neighbours'
     ``n_forecast``-steps-ahead values in ascending index order (the
@@ -46,7 +46,7 @@ def _brute_fcerror(x, dim, delay, n_forecast, eps):
         nbrs = np.sort(np.nonzero(dists <= eps)[0].astype(np.intp))
         if nbrs.size > 1:
             contrib = nbrs[nbrs != i]
-            # rows -> endpoint times t = row + valid_start; the Fortran
+            # rows -> endpoint times t = row + valid_start; the
             # forecast reads y(endpoint + ifc)
             pred = x[contrib + valid_start + n_forecast].sum() / (nbrs.size - 1)
         else:
@@ -56,7 +56,7 @@ def _brute_fcerror(x, dim, delay, n_forecast, eps):
 
 
 # ---------------------------------------------------------------------------
-# time_reversibility (TISEAN timerev)
+# time_reversibility
 # ---------------------------------------------------------------------------
 
 
@@ -105,7 +105,7 @@ class TestTimeReversibility(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# predict_stat (TISEAN predict)
+# predict_stat
 # ---------------------------------------------------------------------------
 
 

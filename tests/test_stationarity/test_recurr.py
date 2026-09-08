@@ -1,4 +1,4 @@
-"""Tests for the TISEAN ``recurr`` rewrite in nolitisea.stationarity.recurrence."""
+"""Tests for ``recurr`` in nolitisea.stationarity.recurrence."""
 
 import unittest
 
@@ -9,9 +9,9 @@ from nolitisea.stationarity.recurrence import recurr
 
 
 def _recurr_brute(series, embed, delay, eps=None):
-    """Brute-force recurrence pairs matching C ``recurr.c`` logic.
+    """Brute-force recurrence pairs matching the ``recurr`` logic.
 
-    Uses a strict ``< eps`` comparison (as in C) and a pure-NumPy
+    Uses a strict ``< eps`` comparison and a pure-NumPy
     pairwise Chebyshev distance, independent of the cKDTree code
     path.
     """
@@ -33,7 +33,7 @@ def _recurr_brute(series, embed, delay, eps=None):
 
     eps_rescaled = 1.0e-3 if eps is None else abs(float(eps)) / maxmax
 
-    # Build embedding (interleaved, matching C coordinate order)
+    # Build embedding (interleaved coordinate order)
     E = lag_block_delay_embed(scaled, embed, delay)
     n_points = E.shape[0]
 

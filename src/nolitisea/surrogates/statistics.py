@@ -34,7 +34,7 @@ def time_reversibility(series, delay=1):
     -------
     float
         Time-reversal asymmetry value.  ``nan`` for a constant series
-        (zero denominator), mirroring the Fortran program.
+        (zero denominator).
 
     Raises
     ------
@@ -63,19 +63,17 @@ def time_reversibility(series, delay=1):
 def predict_stat(series, dim, delay, n_forecast=1, eps=None, frac=None):
     """Prediction-error discriminating statistic.
 
-    Locally constant (zeroth-order) forecast of a scalar series,
-    transcribing the ``fcerror`` routine of the Fortran program:
+    Locally constant (zeroth-order) forecast of a scalar series:
 
     1. Build the ``dim``-dimensional delay embedding with time
        ``delay``; the neighbour database contains exactly those vectors
        whose ``n_forecast``-steps-ahead target still lies inside the
-       series (Fortran ``base(nmax - ifc, ...)``).
+       series.
     2. For every reference point, find all neighbours within Chebyshev
        (max-norm) distance ``eps`` and drop the reference point itself.
     3. Predict ``x[t + n_forecast]`` as the mean of the neighbours'
        values ``x[j + n_forecast]``.  When the reference point has no
-       other neighbour inside the ball, fall back to the series mean
-       (Fortran ``yp(n+ifc) = sx``).
+       other neighbour inside the ball, fall back to the series mean.
     4. Return the root-mean-square prediction error over all valid
        reference points.
 
@@ -92,7 +90,7 @@ def predict_stat(series, dim, delay, n_forecast=1, eps=None, frac=None):
     eps : float, optional
         Absolute neighbourhood radius. Either ``eps``
         or ``frac`` must be given; when both are supplied, ``frac``
-        takes precedence (Fortran ``if(frac.gt.0) eps = sd*frac``).
+        takes precedence.
     frac : float, optional
         Neighbourhood radius as a fraction of the population standard
         deviation of the series.
@@ -100,8 +98,7 @@ def predict_stat(series, dim, delay, n_forecast=1, eps=None, frac=None):
     Returns
     -------
     float
-        Root-mean-square ``n_forecast``-steps-ahead prediction error
-        (the value the Fortran program prints as ``err:``).
+        Root-mean-square ``n_forecast``-steps-ahead prediction error.
 
     Raises
     ------
@@ -113,13 +110,12 @@ def predict_stat(series, dim, delay, n_forecast=1, eps=None, frac=None):
 
     Notes
     -----
-    The neighbour set is identical to the Fortran box-assisted search
-    (full-vector Chebyshev ball; the coordinate order inside a delay
-    vector is irrelevant for the max norm).  Neighbours are accumulated
-    in ascending index order — a deterministic rule that replaces the
-    implementation-defined box-scan order of the Fortran code, so only
-    floating-point rounding of the mean can differ from a TISEAN
-    binary.
+    The neighbour set is the full-vector Chebyshev ball (the coordinate
+    order inside a delay vector is irrelevant for the max norm).
+    Neighbours are accumulated in ascending index order — a
+    deterministic rule that replaces implementation-defined box-scan
+    orders, so only floating-point rounding of the mean can differ
+    between implementations.
     """
     x = np.asarray(series, dtype=np.float64)
     if x.ndim != 1:
@@ -142,23 +138,21 @@ def predict_stat(series, dim, delay, n_forecast=1, eps=None, frac=None):
         )
 
     if frac is not None and frac > 0:
-        # TISEAN rms(): population standard deviation (divide by n)
+        # Population standard deviation (divide by n)
         eps = float(np.std(x)) * float(frac)
     if eps is None or eps <= 0:
         raise ValueError(
-            "either eps or frac must be given as a positive number "
-            "(TISEAN -r / -v)"
+            "either eps or frac must be given as a positive number"
         )
 
     # Database: delay vectors ending at t = valid_start .. n - n_forecast - 1
-    # (row r <-> endpoint t = r + valid_start), exactly the Fortran
-    # base(nmax - ifc, ...) range.
+    # (row r <-> endpoint t = r + valid_start).
     E = lag_block_delay_embed(x, embed=dim, delay=delay)[:n_refs]
     tree = cKDTree(E)
 
     # x[t + n_forecast] for every reference endpoint t; length n_refs.
     targets = x[valid_start + n_forecast :]
-    mean_x = float(x.mean())  # Fortran sx from rms()
+    mean_x = float(x.mean())
 
     sq_error = np.empty(n_refs)
     for r in range(n_refs):
@@ -168,7 +162,7 @@ def predict_stat(series, dim, delay, n_forecast=1, eps=None, frac=None):
         if nbrs.size > 1:
             # The reference point itself is always at distance 0 -> drop it.
             # Ball rows map to endpoint times t = row + valid_start; the
-            # Fortran forecast reads y(endpoint + ifc).
+            # forecast reads y(endpoint + ifc).
             contrib = nbrs[nbrs != r]
             pred = x[contrib + valid_start + n_forecast].sum() / (nbrs.size - 1)
         else:

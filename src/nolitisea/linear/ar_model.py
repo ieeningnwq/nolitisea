@@ -16,7 +16,7 @@ def fit_ar_model(series, order=1):
 
     The per-component mean is subtracted internally and the
     coefficients are obtained from the ordinary least-squares normal
-    equations with the TISEAN normalisation ``1/(N - order)``.  All
+    equations with the normalisation ``1/(N - order)``.  All
     outputs are in mean-subtracted units; add ``mean`` to restore the
     original level.
 

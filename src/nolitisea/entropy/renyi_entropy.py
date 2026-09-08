@@ -41,12 +41,11 @@ def _prepare_series(series):
 
 
 def _forward_embed(data, embed, delay):
-    """Interleaved forward delay embedding in ``boxcount.c`` column order.
+    """Interleaved forward delay embedding.
 
     Column ``e * n_vars + c`` holds component ``c`` at forward delay
-    index ``e`` (time ``t + e * delay`` for base time ``t``),
-    reproducing the ``which_dims`` order ``wd = embed * n_vars + comp``
-    of the C program.
+    index ``e`` (time ``t + e * delay`` for base time ``t``); the row
+    index is ``wd = embed * n_vars + comp``.
     """
     n_times, n_vars = data.shape
     n_points = n_times - (embed - 1) * delay
@@ -57,12 +56,12 @@ def _forward_embed(data, embed, delay):
 
 
 def _epsilon_ladder(eps_min, eps_max, eps_count):
-    """Geometric epsilon ladder replicating the C loop bit-for-bit.
+    """Geometric epsilon ladder.
 
-    Reproduces ``boxcount.c``: ``EPSFAKTOR = (EPSMAX/EPSMIN)**(1/(#-1))``,
-    ``heps = EPSMAX*EPSFAKTOR`` and the ``do { heps /= EPSFAKTOR; }
-    while ((int)(1/heps) <= previous)`` loop that skips duplicate grid
-    counts.
+    The ladder descends from ``eps_max`` by the factor
+    ``(eps_max / eps_min) ** (1 / (eps_count - 1))``; steps whose
+    integer grid count ``int(1/eps)`` does not exceed the previous one
+    are skipped (duplicate grid counts).
 
     Returns
     -------
@@ -108,9 +107,8 @@ def _partition_entropies(idx, q):
 
     ``idx`` has shape ``(n_points, m)`` of integer box indices.
     ``h[wd]`` is computed from the counts of the unique joint boxes
-    spanned by columns ``0..wd``, normalized by the total point number,
-    exactly like the recursive box scan of the C program (every point
-    falls into exactly one box at every depth).
+    spanned by columns ``0..wd``, normalized by the total point number
+    (every point falls into exactly one box at every depth).
     """
     n_points = idx.shape[0]
     h = np.empty(idx.shape[1], dtype=np.float64)
@@ -127,9 +125,8 @@ def _partition_entropies(idx, q):
 def _quantize(E, epsi):
     """Box indices of the rescaled embedding at grid count ``epsi``.
 
-    ``(int)(x * epsi)`` truncates like the C cast; values rescaled
-    exactly to ``1.0`` are clipped into the last box, which is what the
-    C guard ``series[i][j] -= EPSMIN/2`` achieves for the top values.
+    ``int(x * epsi)`` truncates; values rescaled
+    exactly to ``1.0`` are clipped into the last box.
     """
     return np.minimum((E * epsi).astype(np.int64), epsi - 1)
 
@@ -158,23 +155,21 @@ def renyi_entropy(
         must have shape ``(n_times, n_vars)`` with one column per
         component.
     embed : int
-        Maximal embedding dimension per component (C ``maxembed``,
-        default 10); the full phase-space dimension is
+        Maximal embedding dimension per component (default 10); the
+        full phase-space dimension is
         ``n_vars * embed``.
     delay : int
         Time delay.
     q : float
         Order of the Renyi entropy.  ``q == 1`` gives the Shannon
-        entropy, as in the C program's exact ``Q == 1.0`` branch.
+        entropy.
     eps_min, eps_max : float or None
         Ladder bounds in data units (divided by the largest component
-        interval, like user-supplied ``-r``/``-R`` in the C program).
-        ``None`` uses the C defaults: interval/1000 and the full
-        interval.
+        interval).  ``None`` uses interval/1000 and the full interval.
     eps_count : int
-        Number of ladder steps (C ``-#``).  The ladder descends
+        Number of ladder steps.  The ladder descends
         geometrically; grid counts ``int(1/eps)`` that repeat are
-        skipped as in the C loop.
+        skipped.
 
     Returns
     -------
@@ -184,7 +179,7 @@ def renyi_entropy(
         ``(n_vars * embed, eps_count)``; row ``wd = e * n_vars + c``
         belongs to component ``c + 1`` at embedding level ``e + 1``.
         ``"dhq"`` : increments ``hq[wd] - hq[wd - 1]`` (first row
-        copies ``hq[0]``), the third column of the C output; for a
+        copies ``hq[0]``); for a
         single component these are the block-entropy increments.
         ``"components"`` : 1-based component label of each row.
         ``"embeddings"`` : 1-based embedding level of each row.

@@ -26,7 +26,7 @@ def _counts_at_eps(tree, Ea, Eb, eps, m0, m_full, n_center, n_pairs):
 
     Reference rows of ``Eb`` are scanned in time order; the scan stops
     early once at least ``n_center`` rows were scanned and the full
-    order count reached ``n_pairs`` (Fortran ``ncmin``/``ipmin``).
+    order count reached ``n_pairs``.
 
     Returns ``(counts, scanned)`` where ``counts[k - 1]`` is the number
     of scanned pairs within ``eps`` in the first ``k`` coordinates.
@@ -90,13 +90,13 @@ def cross_correlation_integral(
     eps_min, eps_max : float or None
         Bounds of the automatic ladder in data units. ``eps_min`` defaults to ``1e-30``; the ladder
         additionally stops as soon as the smallest reported order has no
-        pair left (Fortran behaviour).
+        pair left.
     n_center : int
         Minimal number of reference points scanned before the scan may
         stop early.
     n_pairs : int
         Minimal full-order pair count that stops the scan early. Early stopping truncates the counts and is
-        what makes large radii cheap in the original program.
+        what makes large radii cheap.
 
     Returns
     -------
@@ -189,7 +189,7 @@ def cross_correlation_integral(
             tree, Ea, Eb, float(current), m0, m_full, n_center, n_pairs
         )
         if not explicit and counts[m0 - 1] == 0:
-            # Fortran: stop entirely once even the smallest order is empty.
+            # Stop entirely once even the smallest order is empty.
             break
         eps_out.append(float(current))
         count_rows.append(counts.copy())

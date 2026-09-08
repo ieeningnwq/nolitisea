@@ -147,8 +147,7 @@ def _solve_ols(X: np.ndarray, y: np.ndarray) -> np.ndarray:
     """Solve ``X @ c = y`` for ``c``, returning the coefficient vector.
 
     Uses the normal equations ``X.T @ X @ c = X.T @ y`` with
-    :func:`numpy.linalg.solve`, which matches TISEAN's ``solvele``
-    (LU factorisation of the Gram matrix).
+    :func:`numpy.linalg.solve` (LU factorisation of the Gram matrix).
     """
     G = X.T @ X
     b = X.T @ y
@@ -160,7 +159,7 @@ def _rmse(series: np.ndarray, dim: int, delay: int, step: int,
           start: int, end: int) -> float:
     """Root-mean-square one-step forecast error in ``[start, end)``.
 
-    Uses the same denominator convention as TISEAN:
+    Uses the denominator convention
     ``(end - start) - (dim - 1) * delay - step``.
     """
     offset = (dim - 1) * delay
@@ -174,13 +173,13 @@ def _rmse(series: np.ndarray, dim: int, delay: int, step: int,
 
 
 # ---------------------------------------------------------------------------
-# 3.  fit_polynom  (TISEAN "polynom" behaviour — full monomial set, normalised)
+# 3.  fit_polynom  (full monomial set, normalised)
 # ---------------------------------------------------------------------------
 
 def fit_polynom(series, dim, delay, degree, step=1, insample=None, cast_steps=0):
     """Fit a polynomial model using every monomial up to ``degree``.
 
-    Mirrors the TISEAN ``polynom`` program:
+    The procedure:
 
     1. Removes the sample mean and divides by the sample standard
        deviation.
@@ -242,9 +241,9 @@ def fit_polynom(series, dim, delay, degree, step=1, insample=None, cast_steps=0)
             f"insample={insample} is too short for dim={dim}, delay={delay}, step={step}"
         )
 
-    # --- normalisation (polynom.c behaviour) -----------------------------
-    # C code: variance() → std_dev = sqrt(mean((x - mean)^2)), then
-    # series[i] /= std_dev.  Mean is NOT removed.
+    # --- normalisation -----------------------------------------------------
+    # std_dev = sqrt(mean((x - mean)^2)), then series[i] /= std_dev.
+    # Mean is NOT removed.
     mean = float(np.mean(s))
     var_total = float(np.mean((s - mean) ** 2))
     std_dev = np.sqrt(var_total) if var_total > 0 else 1.0
@@ -266,14 +265,13 @@ def fit_polynom(series, dim, delay, degree, step=1, insample=None, cast_steps=0)
     #   ⇒ x_orig ≈ std_dev * sum_j c_norm_j * X_norm_j
     #             = sum_j c_norm_j / std_dev ** (sum(e_j) - 1)
     #               * prod_d x_orig ** e_{j,d}
-    # which is exactly c_orig_j = c_norm_j / std_dev ** (sum(e_j) - 1),
-    # matching polynom.c's "results[j] / pow(std_dev, sumpar-1)".
+    # which is exactly c_orig_j = c_norm_j / std_dev ** (sum(e_j) - 1).
     coeffs = np.empty_like(coeffs_norm)
     for j, exp in enumerate(terms):
         total_exp = sum(exp)
         coeffs[j] = coeffs_norm[j] / (std_dev ** (total_exp - 1))
 
-    # --- in-sample RMSE (in normalised units, matching polynom.c) -----------
+    # --- in-sample RMSE (in normalised units) -------------------------------
     resid = y_norm - X @ coeffs_norm
     in_rmse = float(np.sqrt(np.mean(resid * resid)))
 
@@ -301,7 +299,7 @@ def fit_polynom(series, dim, delay, degree, step=1, insample=None, cast_steps=0)
 
 
 # ---------------------------------------------------------------------------
-# 4.  fit_polynom_terms  (TISEAN "polynomp" behaviour — specified terms, no norm)
+# 4.  fit_polynom_terms  (specified terms, no normalisation)
 # ---------------------------------------------------------------------------
 
 def fit_polynom_terms(series, dim, delay, terms, step=1,
@@ -329,9 +327,7 @@ def fit_polynom_terms(series, dim, delay, terms, step=1,
         the result under ``"casted"``.
     variance : float or None, default None
         Optional series variance used only for the FCE-norm output in
-        the returned dict (so users can compare to TISEAN
-        ``polynomp``'s ``#FCE`` header).  If ``None`` it is computed
-        from the series.
+        the returned dict.  If ``None`` it is computed from the series.
 
     Returns
     -------
@@ -415,10 +411,9 @@ def _do_cast(series: np.ndarray, dim: int, delay: int,
              n_steps: int) -> np.ndarray:
     """Produce ``n_steps`` of iterated single-step predictions.
 
-    The TISEAN programs seed the forecast with the last
-    ``(dim - 1) * delay + 1`` values of the input series and then
-    push each predicted value back onto the left end of the delay
-    window.
+    The forecast is seeded with the last ``(dim - 1) * delay + 1``
+    values of the input series and each predicted value is pushed
+    back onto the left end of the delay window.
     """
     cast = np.empty(n_steps, dtype=np.float64)
     # Working buffer: hold the last (dim-1)*delay+1 values, oldest at
@@ -449,7 +444,7 @@ def _do_cast(series: np.ndarray, dim: int, delay: int,
 
 
 # ---------------------------------------------------------------------------
-# 6.  polyback  (TISEAN "polyback" — backward elimination)
+# 6.  polyback  (backward elimination)
 # ---------------------------------------------------------------------------
 
 def polyback(series, dim, delay, degree, down_to=1, step=1,
@@ -461,8 +456,8 @@ def polyback(series, dim, delay, degree, down_to=1, step=1,
     deletion yields the **smallest increase** (or largest decrease)
     in the chosen error metric is dropped.  When an out-of-sample
     split is available (``insample < len(series)``) the decision is
-    based on the out-of-sample RMSE, matching the TISEAN C program.
-    Otherwise the in-sample RMSE is used.
+    based on the out-of-sample RMSE.  Otherwise the in-sample RMSE is
+    used.
 
     Parameters
     ----------

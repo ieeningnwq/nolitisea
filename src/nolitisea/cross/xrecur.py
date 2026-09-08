@@ -9,8 +9,7 @@ from nolitisea.core.embed import lag_block_delay_embed
 
 __all__ = ["cross_recurrence"]
 
-# Radius growth factor and pass limit of the fixed-``kmin`` path
-# (Fortran ``epsfac`` and the ``do 10 io=1,100`` loop).
+# Radius growth factor and pass limit of the fixed-``kmin`` path.
 _EPS_FAC = 1.1
 _MAX_PASSES = 100
 # Fixed seed for the ``percentage`` random thinning, so results are
@@ -80,14 +79,14 @@ def cross_recurrence(a, b, dim=2, delay=1, eps=1e-3, metric="chebyshev", *,
         Distance metric; default maximum norm.
     normalize : bool, default True
         Rescale every component of both series to ``[0, 0.9999]``
-        before the computation (C switches this off with ``-n``).
+        before the computation.
     kmin : int, default 0
         When positive, find for every reference point the first radius
         level at which at least ``kmin`` eligible neighbours exist and
-        keep all of them (C option ``-k``); ``eps`` only sets the
+        keep all of them; ``eps`` only sets the
         starting radius.
     percentage : float
-        Percentage of eligible pairs to keep (C option ``-%``); only
+        Percentage of eligible pairs to keep; only
         used when ``kmin == 0``.  100 keeps everything.
     step_a, step_b : int
         Use only every ``step_a``-th delay vector of ``a`` and every
@@ -145,7 +144,7 @@ def cross_recurrence(a, b, dim=2, delay=1, eps=1e-3, metric="chebyshev", *,
         raise ValueError(f"series too short for dim={dim}, delay={delay}")
 
     # Box search prefix: two delay coordinates for scalar input, the
-    # spatial components for multivariate input (Fortran ``mb``/``mbase``).
+    # spatial components for multivariate input.
     m0 = min(dim, 2) if n_vars == 1 else n_vars
     tree = cKDTree(Eb[:, :m0])
     col_mask = np.zeros(Eb.shape[0], dtype=bool)

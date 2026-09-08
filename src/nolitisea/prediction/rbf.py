@@ -1,4 +1,4 @@
-"""Radial basis function prediction (TISEAN ``rbf``).
+"""Radial basis function prediction.
 
 Fits a Gaussian radial basis function model to a scalar time series
 using delay embedding.  The fitted model has the form::
@@ -8,11 +8,9 @@ using delay embedding.  The fitted model has the form::
 where ``phi(r) = exp(-r^2 / (2 * eps^2))`` and ``x_n`` is the
 delay-embedded vector ``[x(n), x(n-delay), ..., x(n-(dim-1)*delay)]``.
 
-This module follows the normalisation convention used by the TISEAN
-C program: the series is first mapped linearly to ``[0, 1]`` so
-that all computed quantities (centres, weights, errors) live on
-the rescaled attractor, and physical units are restored at the
-output stage.
+The series is first mapped linearly to ``[0, 1]`` so that all
+computed quantities (centres, weights, errors) live on the rescaled
+attractor, and physical units are restored at the output stage.
 """
 
 from __future__ import annotations
@@ -25,7 +23,7 @@ __all__ = ["fit_rbf", "predict_rbf", "rbf_forecast_error"]
 
 
 # ---------------------------------------------------------------------------
-# 1.  Centre initialisation  (mirrors TISEAN main loop lines 301-304)
+# 1.  Centre initialisation
 # ---------------------------------------------------------------------------
 
 def _init_centers(series: np.ndarray, dim: int, delay: int,
@@ -33,9 +31,9 @@ def _init_centers(series: np.ndarray, dim: int, delay: int,
     """Initialise RBF centres by sampling the delay-embedded trajectory.
 
     The first centre is placed at index ``(dim-1)*delay`` and the last
-    at ``LENGTH-1``; intermediate centres are spaced uniformly by
-    integer division of ``cstep = LENGTH-1-(dim-1)*delay``, exactly
-    matching the C code's ``(i*cstep)/(CENTER-1)`` pattern.
+    at ``LENGTH-1``; intermediate centres are spaced uniformly using
+    the integer division ``(i * cstep) // (n_centers - 1)`` with
+    ``cstep = LENGTH-1-(dim-1)*delay``.
 
     Parameters
     ----------
@@ -56,7 +54,7 @@ def _init_centers(series: np.ndarray, dim: int, delay: int,
 
     centers = np.empty((n_centers, dim), dtype=np.float64)
     for i in range(n_centers):
-        # Integer division, exactly as C (i*cstep)/(CENTER-1)
+        # Integer division: (i*cstep)/(CENTER-1)
         base = offset + (i * cstep) // (n_centers - 1)
         for j in range(dim):
             centers[i, j] = series[base - j * delay]
@@ -64,19 +62,19 @@ def _init_centers(series: np.ndarray, dim: int, delay: int,
 
 
 # ---------------------------------------------------------------------------
-# 2.  Drift / repulsive centre movement  (mirrors C drift(), 20 iterations)
+# 2.  Drift / repulsive centre movement  (20 iterations)
 # ---------------------------------------------------------------------------
 
 def _drift_centers(centers: np.ndarray, n_iter: int = 20,
                    step0: float = 1e-2) -> np.ndarray:
-    """Push centres apart so no two overlap (optional TISEAN step).
+    """Push centres apart so no two overlap (optional step).
 
     The force on centre ``i`` in dimension ``j`` is::
 
         F_j = sum_{k != i}  sign(h) / h^2,   h = centers[i,j] - centers[k,j]
 
-    (the C code writes ``h / sqr(h) / fabs(h)`` which reduces to the
-    same expression).  Centres are kept inside a loose ``[-0.1, 1.1]``
+    (the expression ``h / h**2 / |h|`` reduces to the same thing).
+    Centres are kept inside a loose ``[-0.1, 1.1]``
     bounding box to avoid degenerate drift.
 
     Parameters
@@ -84,7 +82,7 @@ def _drift_centers(centers: np.ndarray, n_iter: int = 20,
     centers : np.ndarray, shape (n_centers, dim)
         *Rescaled* centres in ``[0, 1]``.  Modified in place.
     n_iter : int, default 20
-        Number of drift sweeps (TISEAN uses 20).
+        Number of drift sweeps.
     step0 : float, default 1e-2
         Base step size.
 
@@ -109,7 +107,7 @@ def _drift_centers(centers: np.ndarray, n_iter: int = 20,
                 continue
             step1 = step0 / h_total
             delta = step1 * force
-            # Per-dimension boundary check (C code handles each dim independently)
+            # Per-dimension boundary check (each dim handled independently)
             for j in range(d):
                 new_val = ci[j] + delta[j]
                 if -0.1 < new_val < 1.1:
@@ -118,14 +116,14 @@ def _drift_centers(centers: np.ndarray, n_iter: int = 20,
 
 
 # ---------------------------------------------------------------------------
-# 3.  RBF width estimation via average centre distance  (mirrors C avdistance())
+# 3.  RBF width estimation via average centre distance
 # ---------------------------------------------------------------------------
 
 def _avdistance(centers: np.ndarray) -> float:
     """Mean Euclidean distance between all centre pairs, per dimension.
 
-    The C implementation accumulates ``sum_{i!=j} sum_k (c_ik - c_jk)^2``
-    and divides by ``(nc-1) * nc * dim`` before taking the square root.
+    The accumulation is ``sum_{i!=j} sum_k (c_ik - c_jk)^2``, divided
+    by ``(nc-1) * nc * dim`` before taking the square root.
 
     Parameters
     ----------
@@ -141,10 +139,9 @@ def _avdistance(centers: np.ndarray) -> float:
     for i in range(nc):
         diffs = centers[i + 1:] - centers[i]  # shape (nc-1-i, d)
         total += np.sum(diffs * diffs)
-    # Each pair counted twice implicitly — C's double loop does the
-    # same but divides by (nc-1)*nc instead of 2*(nc-1 choose 2).
-    # Let's verify: C sums over all i!=j, so total_pairs_contribution = 2*above
-    # and denominator = (nc-1)*nc.  So total * 2 / ((nc-1)*nc*d)
+    # The i!=j sum counts every pair twice, and the denominator is
+    # (nc-1)*nc rather than the number of unordered pairs, hence the
+    # factor 2: total * 2 / ((nc-1)*nc*d)
     return float(np.sqrt(2.0 * total / ((nc - 1) * nc * d)))
 
 
@@ -165,7 +162,7 @@ def _delay_vector(series: np.ndarray, n: int, dim: int, delay: int) -> np.ndarra
 
 
 # ---------------------------------------------------------------------------
-# 5.  Main fit  (mirrors C make_fit() + main orchestration)
+# 5.  Main fit
 # ---------------------------------------------------------------------------
 
 def fit_rbf(series, dim, delay, n_centers, eps=None, step=1,
@@ -177,22 +174,22 @@ def fit_rbf(series, dim, delay, n_centers, eps=None, step=1,
     series : array_like
         1-D scalar input series (physical units).
     dim : int
-        Embedding dimension ``m`` (TISEAN ``-m``).
+        Embedding dimension ``m``.
     delay : int
-        Time delay ``d`` (TISEAN ``-d``).
+        Time delay ``d``.
     n_centers : int
-        Number of RBF centres ``p`` (TISEAN ``-p``).
+        Number of RBF centres ``p``.
     eps : float or None, default None
         RBF width.  When ``None`` it is set to the average centre
-        distance (TISEAN default ``avdistance``).
+        distance.
     step : int, default 1
-        Forecast horizon ``s`` (TISEAN ``-s``).
+        Forecast horizon ``s``.
     insample : int or None, default None
         Number of data points used for fitting.  ``None`` means the
-        whole series (TISEAN ``-n``).
+        whole series.
     drift : bool, default True
         Whether to apply the repulsive drift step to centres
-        (TISEAN default; pass ``False`` to mirror ``-X``).
+        (default ``True``).
 
     Returns
     -------
@@ -237,7 +234,7 @@ def fit_rbf(series, dim, delay, n_centers, eps=None, step=1,
             f"insample={insample} is too short for dim={dim}, delay={delay}, step={step}"
         )
 
-    # --- rescale to [0, 1] (exact match with TISEAN rescale_data) --------
+    # --- rescale to [0, 1] ------------------------------------------------
     s_resc, minv, interval = rescale_data(s)
 
     # --- centre initialisation -------------------------------------------
@@ -270,7 +267,7 @@ def fit_rbf(series, dim, delay, n_centers, eps=None, step=1,
 
     y_target = s_resc[n_base_start + step: n_base_end + step]  # length n_samples
 
-    # Build Gram matrix and rhs — TISEAN's exact normal equation layout:
+    # Build Gram matrix and rhs — normal equation layout:
     #   mat[0,0] = sum(1); mat[1:,0] = sum(hcen[:,j]);
     #   mat[i,j] for i,j>=1 = sum(hcen[:,i-1] * hcen[:,j-1])
     #   coefs[0] = sum(y); coefs[1:] = sum(y * hcen[:,j])
@@ -287,7 +284,7 @@ def fit_rbf(series, dim, delay, n_centers, eps=None, step=1,
     mat[1:, 1:] = hcen.T @ hcen
     mat[0, 1:] = mat[1:, 0]  # symmetrise first row/column
 
-    # Solve via numpy.linalg.solve (matches TISEAN solvele LU decomp)
+    # Solve via numpy.linalg.solve (LU decomposition)
     try:
         coefs = np.linalg.solve(mat, rhs)
     except np.linalg.LinAlgError as exc:
@@ -303,9 +300,9 @@ def fit_rbf(series, dim, delay, n_centers, eps=None, step=1,
         out_rmse = rbf_forecast_error(s_resc, coefs, centers, eps,
                                       dim, delay, step, insample, n)
 
-    # FCE = RMSE / sigma — C code computes sigma from *rescaled* in-sample
-    # (variance was already overwritten by avdistance, but in the
-    #  RMSE denominator it recomputes sigma from the insample slice).
+    # FCE = RMSE / sigma — sigma is computed from the *rescaled*
+    # in-sample slice (the RMSE denominator recomputes sigma from the
+    # insample slice).
     _in = s_resc[:insample]
     in_sigma = float(np.sqrt(np.mean((_in - np.mean(_in)) ** 2)))
     in_fce = in_rmse / in_sigma if in_sigma > 0 else float("nan")
@@ -380,7 +377,7 @@ def rbf_forecast_error(series: np.ndarray, coefs: np.ndarray,
 
 
 # ---------------------------------------------------------------------------
-# 7.  Iterated forecasting  (mirrors C make_cast())
+# 7.  Iterated forecasting
 # ---------------------------------------------------------------------------
 
 def predict_rbf(model, series, n_steps):
@@ -423,12 +420,12 @@ def predict_rbf(model, series, n_steps):
     s_resc = (s - minv) / interval
 
     # Working buffer: last (dim-1)*delay+1 values, oldest at index 0,
-    # newest at index (dim-1)*delay (TISEAN convention).
+    # newest at index (dim-1)*delay.
     buf_len = (dim - 1) * delay + 1
     buf = np.empty(buf_len, dtype=np.float64)
     if len(s_resc) < buf_len:
-        # Pad with zeros (scaled space) — this matches C behaviour when
-        # the cast buffer is larger than the input; we simply take what's available
+        # Pad with zeros (scaled space) when the cast buffer is larger
+        # than the input; we simply take what's available
         buf[:] = 0.0
         buf[buf_len - len(s_resc):] = s_resc
     else:

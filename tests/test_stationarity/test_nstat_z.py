@@ -9,7 +9,7 @@ from nolitisea.stationarity.nstat_z import nstat_z
 
 def _nstat_z_brute(y, dim, delay, n_pieces, step, min_neighbors,
                    eps0=None, eps_factor=1.2, causal=None):
-    """Literal transcription of nstat_z.c's main loop.
+    """Literal transcription of nstat_z's main loop.
 
     Walks the same epsilon ladder and uses a brute-force Chebyshev
     neighbour scan, independent of the cKDTree-based rewrite.

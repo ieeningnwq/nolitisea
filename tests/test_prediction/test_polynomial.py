@@ -14,7 +14,7 @@ from nolitisea.prediction.polynomial import (
 
 
 class TestPolypar(unittest.TestCase):
-    """Tests for the monomial generator (replaces TISEAN polypar)."""
+    """Tests for the monomial generator."""
 
     def test_count_matches_binomial(self):
         from math import comb
@@ -34,7 +34,7 @@ class TestPolypar(unittest.TestCase):
                     for d in range(dim):
                         self.assertGreaterEqual(e[d], 0)
 
-    def test_order_matches_tisean_c(self):
+    def test_order_matches_reference(self):
         self.assertEqual(
             polypar(3, 2),
             [(0, 0, 0), (1, 0, 0), (2, 0, 0), (0, 1, 0), (1, 1, 0),

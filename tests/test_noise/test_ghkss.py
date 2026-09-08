@@ -1,4 +1,4 @@
-"""Tests for the GHKSS multivariate noise reduction (TISEAN ``ghkss``)."""
+"""Tests for the GHKSS multivariate noise reduction."""
 
 import unittest
 

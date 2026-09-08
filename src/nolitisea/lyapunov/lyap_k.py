@@ -3,7 +3,7 @@
 from functools import partial
 
 import numpy as np
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree  # pyright: ignore[reportAttributeAccessIssue]
 
 from nolitisea.utils.parallel import parallel_map
 from nolitisea.utils.rescale import rescale_data
@@ -66,7 +66,7 @@ def _lyap_k_chunk_worker(task, x, B, tree, steps, delays, theiler,
             c = pos.sum(axis=0)
             f = np.where(pos, dx, 0.0).sum(axis=0)
             ok = c > 0
-            # (S_{\text{tisean}}(t)=0.5\log\left(\frac{1}{N}\sum_{k} D_k^2(t)\right))
+            # (S_{\text{code}}(t)=0.5\log\left(\frac{1}{N}\sum_{k} D_k^2(t)\right))
             # \(S_{\text{paper}}(t)=\frac{1}{N}\sum_{k}\log(D_k(t))\)
             # S_{\text{paper}}(t) is defined in paper.
             contrib_count[i, j, ok] += 1
@@ -116,7 +116,7 @@ def lyap_k(
         dimension ``min_dim .. dim``.
     eps_min, eps_max : float or None
         Ladder bounds in the units of the input data.  ``None`` defaults: the data interval
-        divided by 1000 and by 100.  As in C, ``eps_min >= eps_max``
+        divided by 1000 and by 100.  ``eps_min >= eps_max``
         collapses the ladder to the single radius ``eps_min``.
     eps_count : int
         Number of ladder radii when ``eps_list`` is not given.  The ladder ascends geometrically from ``eps_min`` to

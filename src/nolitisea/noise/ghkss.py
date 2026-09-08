@@ -11,7 +11,7 @@ __all__ = ["ghkss"]
 
 # Batch size for KD-tree ball queries; bounds the memory used by neighbour lists.
 _QUERY_CHUNK = 4096
-# Off-manifold coordinate weight of the TISEAN "partial" metric.
+# Off-manifold coordinate weight of the partial metric.
 _METRIC_HEAVY = 1.0e3
 # Safety bound for the adaptive-epsilon loop: after rescaling, every component
 # lies in [0, 1], so the Chebyshev diameter of the embedding space is <= 1 and
@@ -30,7 +30,7 @@ def _local_correction(E, row, nb, metric, qdim):
         Phase-space index of the point being corrected.
     nb : array
         Phase-space indices of its neighbours at the current epsilon
-        (the point itself included, as in the C box search).
+        (the point itself included).
     metric : ndarray
         Coordinate weights (1.0 or :data:`_METRIC_HEAVY`).
     qdim : int
@@ -121,7 +121,7 @@ def ghkss(
         each iteration.
     euclidean : bool
         If ``True`` weight all phase-space coordinates equally; otherwise
-        use the TISEAN partial metric, which down-weights the oldest and
+        use the partial metric, which down-weights the oldest and
         newest ``comp`` coordinates by ``1e3``.
 
     Returns
@@ -192,8 +192,8 @@ def ghkss(
 
     metric = np.ones(dim, dtype=np.float64)
     if not euclidean:
-        # TISEAN partial metric: the first and last ``comp`` coordinates
-        # (newest and oldest delay block) are down-weighted, as in C.
+        # Partial metric: the first and last ``comp`` coordinates
+        # (newest and oldest delay block) are down-weighted.
         metric[:comp] = _METRIC_HEAVY
         metric[dim - comp:] = _METRIC_HEAVY
     trace = float((1.0 / metric).sum())

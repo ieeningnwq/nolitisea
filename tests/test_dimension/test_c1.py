@@ -10,10 +10,10 @@ from nolitisea.dimension.c1 import _psi, c1
 
 def _brute_c1(data, embed_min, embed_max, delay, theiler, ncmin,
               resolution, kmax, seed):
-    """Independent naive reimplementation of the Fortran c1/d1 pair.
+    """Independent naive reimplementation of the c1/d1 estimator pair.
 
     Uses no tree, no parallelism and builds every order-``m`` embedding
-    directly in the Fortran coordinate order (oldest delay block first,
+    directly in the documented coordinate order (oldest delay block first,
     components in file order, coordinates capped at the total dimension
     ``m``).  Only ``_psi`` is shared with the implementation; the table
     itself is covered by :class:`TestPsi`.

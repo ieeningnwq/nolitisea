@@ -13,7 +13,7 @@ def _brute_c2(ts, m, delay, theiler, eps):
 
     Counts unique pairs ``(i, j)`` with ``i < j``, ``|j - i| > theiler``
     and Chebyshev distance ``<= eps``, divided by the number of eligible
-    pairs.  Mirrors the TISEAN ``c2`` definition independently of the
+    pairs.  Mirrors the ``c2`` definition independently of the
     cKDTree-based implementation under test.
     """
     E = delay_embedding(ts, m, delay)

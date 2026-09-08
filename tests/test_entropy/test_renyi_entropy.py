@@ -28,7 +28,7 @@ def _brute_entropies(series, embed, delay, q, epsi):
     Independent implementation of the documented rule: forward
     interleaved embedding (``wd = e * n_vars + c`` holds component
     ``c`` at time ``t + e * delay``), box index ``int(x * epsi)``
-    clipped to ``epsi - 1`` (documented replacement of the C guard for
+    clipped to ``epsi - 1`` (documented guard for
     values rescaled exactly to ``1.0``), joint box occupation counted
     with a dict and normalized by the total number of points.
     """
@@ -58,7 +58,7 @@ def _brute_entropies(series, embed, delay, q, epsi):
 
 
 def _ref_ladder(eps_min, eps_max, count):
-    """Reference transcription of the C epsilon ladder loop."""
+    """Reference implementation of the epsilon ladder."""
     factor = (eps_max / eps_min) ** (1.0 / (count - 1)) if count > 1 else 1.0
     heps = eps_max * factor
     old = 0
@@ -227,7 +227,7 @@ class TestBoxcountCore(unittest.TestCase):
         s = rng.standard_normal(100)
         res = renyi_entropy(s, embed=2, delay=1, q=2.0, eps_count=3)
         interval = np.ptp(s)
-        # Default relative bounds are the C defaults 1e-3 and 1.0.
+        # Default relative bounds are 1e-3 and 1.0.
         ref_deps, _ = _ref_ladder(1e-3, 1.0, 3)
         np.testing.assert_allclose(res["eps"], ref_deps * interval,
                                    rtol=1e-15, atol=0.0)

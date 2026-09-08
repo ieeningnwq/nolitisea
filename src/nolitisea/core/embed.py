@@ -124,14 +124,13 @@ def lag_block_delay_embed(data, embed, delay):
     Each row of the result is a phase-space point.  Row ``r``
     corresponds to base time ``r + (embed - 1) * delay`` and column
     ``k * n_vars + c`` holds the ``c``-th component at delay index
-    ``k`` (time ``r + (embed - 1 - k) * delay``), reproducing the C
-    program's coordinate order ``index_comp[i] = i % n_vars`` and
-    ``index_embed[i] = (i // n_vars) * delay``.
+    ``k`` (time ``r + (embed - 1 - k) * delay``); for a flat column
+    index ``i`` the component index is ``i % n_vars`` and the delay
+    index is ``(i // n_vars) * delay``.
 
     The prefix ``E[:, :m]`` is the order-``m`` embedding whose Chebyshev
     diameter equals the running maximum over the first ``m``
-    coordinates — the quantity TISEAN ``d2`` accumulates in
-    ``found[m - 1]``.
+    coordinates.
 
     Parameters
     ----------
@@ -173,8 +172,7 @@ def delay_vectors(series, embdim=None, delay=1, dims=None, increments=None):
         E[r, block_i + k] = x_i(n - offset_{i, k}),   offset_{i, 0} = 0,
 
     where the block of variable ``i`` occupies the columns
-    ``sum(dims[:i]) : sum(dims[:i + 1])``.  This reproduces the C
-    program's output layout (``-F``/``-d``/``-D`` semantics).  Note that
+    ``sum(dims[:i]) : sum(dims[:i + 1])``.  Note that
     :func:`delay_embedding` and :func:`mixed_embedding` anchor the
     vectors at the *oldest* sample instead; both conventions describe
     the same set of delay vectors.
@@ -185,12 +183,12 @@ def delay_vectors(series, embdim=None, delay=1, dims=None, increments=None):
         Input data.  A 1-D array is a single variable; a 2-D array must
         have shape ``(n_vars, n_times)`` with one row per variable).
     embdim : int, optional
-        Total embedding dimension (C option ``-m``).  Defaults to ``2``
+        Total embedding dimension.  Defaults to ``2``
         when ``dims`` is not given and to ``sum(dims)`` otherwise.
     delay : int, default 1
         Delay increment between successive coordinates of a variable.  Ignored when ``increments`` is given.
     dims : sequence of int, optional
-        Embedding dimension per variable (C option ``-F``).  When given,
+        Embedding dimension per variable.  When given,
         ``embdim`` (if provided) must equal ``sum(dims)``.
     increments : sequence of int, optional
         Delay increment between successive coordinates, consumed across
@@ -218,10 +216,10 @@ def delay_vectors(series, embdim=None, delay=1, dims=None, increments=None):
         )
     n_vars, length = arr.shape
 
-    # Per-variable embedding dimensions (C ``formatlist``).
+    # Per-variable embedding dimensions.
     if dims is None:
         if embdim is None:
-            embdim = 2  # C default
+            embdim = 2  # default
         if embdim < 1:
             raise ValueError("embdim must be >= 1")
         if embdim % n_vars:

@@ -45,9 +45,8 @@ def nstat_z(
         Minimum number of neighbours required for a reference point
         to be considered done; must be >= 1.
     eps0 : float or None
-        Initial neighbourhood radius in the units of the input data
-        (C option ``-r``).  ``None`` (default) uses the C default,
-        the data interval divided by 1000.
+        Initial neighbourhood radius in the units of the input data.
+        ``None`` (default) uses the data interval divided by 1000.
     eps_factor : float, default 1.2
         Multiplicative growth factor of the epsilon ladder; must be > 1.0.
     n_refs : int or None
@@ -83,17 +82,17 @@ def nstat_z(
     -----
     Uses a single :class:`cKDTree` built once per source
     segment.  The epsilon ladder grows from ``eps0 / eps_factor``
-    (so the first iteration uses ``eps0``) exactly as in C.  The
+    (so the first iteration uses ``eps0``).  The
     forecast for reference point ``i`` is the mean of
     ``series1[nb + step]`` over all non-excluded neighbours found
     within the current epsilon; the error contribution is
     ``(forecast - series2[i + step]) ** 2``.  The output is
     ``sqrt(sum_error / center) / std[second]``.
 
-    On continuous data the cKDTree closed-ball (``<= eps``) and the
-    C strict comparison (``< eps``) coincide; on quantised data the
-    boundary pairs may differ, consistent with the convention of the
-    other TISEAN rewrites in this package.
+    On continuous data the cKDTree closed-ball (``<= eps``) coincides
+    with a strict comparison (``< eps``); on quantised data the
+    boundary pairs may differ, consistent with the convention used
+    throughout this package.
 
     References
     ----------
@@ -123,7 +122,7 @@ def nstat_z(
 
     pstart = (dim - 1) * delay
 
-    # Global affine rescale to [0, 1] (TISEAN rescale_data).
+    # Global affine rescale to [0, 1].
     scaled, _minv, interval = rescale_data(y)
 
     # Epsilon in rescaled units.
@@ -132,7 +131,7 @@ def nstat_z(
     else:
         eps0_rescaled = abs(float(eps0)) / interval
 
-    # Segment length (integer division, matching C).
+    # Segment length (integer division).
     if n - pstart < n_pieces:
         raise ValueError(
             f"series too short ({n} points) for {n_pieces} pieces with "
@@ -148,7 +147,7 @@ def nstat_z(
         )
 
     # Per-segment standard deviation (Bessel's correction) for
-    # normalisation.  Computed on the rescaled data, matching C.
+    # normalisation.  Computed on the rescaled data.
     rms = np.empty(n_pieces)
     for i in range(n_pieces):
         seg = scaled[i * clength : (i + 1) * clength]
@@ -173,8 +172,7 @@ def nstat_z(
     for first in range(n_pieces):
         src_start = first * clength
         # Source embedding: covers segment-base indices
-        # [pstart, clength - step - 1] (make_box is called with
-        # clength - step in C).
+        # [pstart, clength - step - 1].
         s1_source = scaled[src_start : src_start + clength - step]
         E1 = lag_block_delay_embed(s1_source, dim, delay)
         tree = cKDTree(E1)
@@ -185,8 +183,8 @@ def nstat_z(
             # accesses up to segment index pstart + clength - step - 1
             # for the embedding and pstart + clength - 1 for the
             # forecast target, i.e. pstart points beyond the segment
-            # boundary (into the next segment, as in C's contiguous
-            # array).  The extended slice covers this.
+            # boundary (into the next segment).  The extended slice
+            # covers this.
             s2_ext = scaled[tgt_start : tgt_start + clength + pstart]
             E2 = lag_block_delay_embed(s2_ext, dim, delay)
             query_pts = E2[:center]
@@ -214,7 +212,7 @@ def nstat_z(
                     nb_seg_base = nb + pstart
                     # Exclusion: remove [i - causal + 1,
                     # i + causal + pstart - 1].  When the lower
-                    # bound underflows (C unsigned), no exclusion
+                    # bound is negative, no exclusion
                     # is applied.
                     ex_lo = i - causal + 1
                     ex_hi = i + causal + pstart - 1

@@ -9,7 +9,7 @@ from nolitisea.dimension.d2 import d2
 
 
 def _embed_brute(data, embed, delay, m):
-    """Prefix order-``m`` embedding in the C interleaved column order."""
+    """Prefix order-``m`` embedding in the interleaved column order."""
     return lag_block_delay_embed(data, embed, delay)[:, :m]
 
 

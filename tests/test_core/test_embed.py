@@ -326,7 +326,7 @@ class TestDelayVectors(unittest.TestCase):
     # ------------------------------------------------------------------
 
     def test_univariate_default_embdim_2(self):
-        """C defaults: embdim=2, delay=1; vectors anchored at the newest sample."""
+        """Defaults: embdim=2, delay=1; vectors anchored at the newest sample."""
         series = np.arange(5.0)
         result = delay_vectors(series)
         expected = np.array([[1.0, 0.0], [2.0, 1.0], [3.0, 2.0], [4.0, 3.0]])

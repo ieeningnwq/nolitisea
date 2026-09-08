@@ -67,7 +67,7 @@ class TestInitCenters(unittest.TestCase):
         np.testing.assert_allclose(centers[-1], expected_last)
 
     def test_integer_division_spacing(self):
-        """Centre indices must match C's ``i*cstep//(nc-1)`` pattern."""
+        """Centre indices must follow the ``i*cstep//(nc-1)`` pattern."""
         n, dim, delay, nc = 200, 2, 1, 7
         s = np.random.default_rng(0).random(n)
         offset = (dim - 1) * delay

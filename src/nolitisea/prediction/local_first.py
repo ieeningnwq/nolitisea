@@ -20,7 +20,7 @@ state.
 from __future__ import annotations
 
 import numpy as np
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree  # pyright: ignore[reportAttributeAccessIssue]
 
 from nolitisea.core.embed import lag_block_delay_embed
 from nolitisea.utils.rescale import rescale_data
@@ -68,8 +68,8 @@ def _build_embedding(s2d, embed, delay):
 def _scan_epsilons(eps0, eps1, eps_factor):
     """Yield geometrically spaced epsilon values up to ``eps1 * factor``.
 
-    Matches the C loop: ``for epsilon = EPS0; epsilon < EPS1 * EPSF;
-    epsilon *= EPSF``.
+    Values are ``EPS0 * EPSF**k`` for every ``k`` with
+    ``epsilon < EPS1 * EPSF``.
     """
     eps = float(eps0)
     while eps < eps1 * eps_factor:
@@ -80,8 +80,8 @@ def _scan_epsilons(eps0, eps1, eps_factor):
 def _local_linear_predict(X, y, query):
     """Centred OLS fit (without intercept) + predict at ``query``.
 
-    Matches TISEAN ``make_fit`` exactly: regressions are centred on
-    the neighbours' embedding and target means, then the fitted
+    Regressions are centred on the neighbours' embedding and target
+    means, then the fitted
     coefficient is applied to the centred query point and finally
     the target mean is added back.  ``numpy.linalg.lstsq`` handles
     rank-deficient cases gracefully.
@@ -150,7 +150,7 @@ def lfo_ar(
     eps0 : float or None, default None
         Starting neighbourhood size, given in *relative* units
         (fraction of the largest component range).  ``None`` uses
-        ``interval / 1000``, matching the C default.
+        ``interval / 1000``.
     eps1 : float or None, default None
         Final neighbourhood size (relative).  ``None`` uses the full
         interval (``1.0`` after normalisation).
@@ -229,7 +229,7 @@ def lfo_ar(
         rescaled[:, c] = sr
         max_interval = max(max_interval, interval)
 
-    # --- default epsilon bounds (C convention, already relative here) -
+    # --- default epsilon bounds (already relative here) ---------------
     if eps0 is None:
         eps0 = 1.0 / 1000.0
     if eps1 is None:
@@ -357,8 +357,6 @@ def lfo_test(
     The final result is a single per-component relative forecast
     error.
 
-    Matches the TISEAN ``lfo`` / ``lfo-test`` program.
-
     Parameters
     ----------
     series : array_like
@@ -375,7 +373,7 @@ def lfo_test(
     eps0 : float or None, default None
         Starting neighbourhood size, given in *relative* units
         (fraction of the largest component range).  ``None`` uses
-        ``1/1000``, matching the C default.
+        ``1/1000``.
     eps_factor : float, default 1.2
         Geometric multiplier for the adaptive epsilon expansion loop.
     min_neighbors : int, default 30
@@ -494,7 +492,7 @@ def lfo_test(
                 dtype=np.intp,
             )
             nbr_times = nbr_embed_idx + valid_start
-            # C's LENGTH - STEP cutoff
+            # LENGTH - STEP cutoff
             keep = nbr_times <= n_times - step - 1
             nbr_embed_idx = nbr_embed_idx[keep]
             nbr_times = nbr_times[keep]
@@ -507,7 +505,7 @@ def lfo_test(
 
             n_nbrs = len(nbr_times)
             if n_nbrs <= min_neighbors:
-                continue  # need strictly more than min_neighbors (C: > MINN)
+                continue  # need strictly more than min_neighbors
 
             X = E[nbr_times - valid_start]
             y_all = rescaled[nbr_times + step, :]
@@ -522,10 +520,10 @@ def lfo_test(
     n_unresolved = int((~done).sum())
 
     # --- relative error: sqrt(MSE / n_total) / overall_std ---------
-    # C code uses norm = clength - hdim (total ref points, not just done).
-    # When all points are done this is equivalent to sqrt(MSE_done) / std.
-    # When some are unresolved, the C code would have kept expanding;
-    # here we use n_total as the normalization denominator.
+    # The norm is the total number of reference points (not just the
+    # resolved ones).  When all points are done this is equivalent to
+    # sqrt(MSE_done) / std; when some are unresolved they still count
+    # in the normalization denominator.
     norm = float(n_ref_total)
     comp_errors = np.zeros(n_vars)
     for c in range(n_vars):
@@ -573,9 +571,8 @@ def lfo_run(
     order model, extrapolates one step, and advances a rolling ring
     buffer.
 
-    Matches the TISEAN ``lfo-run`` program (no causal exclusion — the
-    query point is a synthetic rolling state, never part of the
-    historical database).
+    No causal exclusion is applied: the query point is a synthetic
+    rolling state, never part of the historical database.
 
     Parameters
     ----------
@@ -589,8 +586,7 @@ def lfo_run(
         Number of one-step extrapolations to perform.
     method : {"linear", "zeroth"}, default "linear"
         ``"linear"`` fits a local linear model by centred OLS;
-        ``"zeroth"`` takes the mean of the neighbours' next values
-        (the C ``-0`` option).
+        ``"zeroth"`` takes the mean of the neighbours' next values.
     eps0 : float or None, default None
         Starting neighbour radius in *relative* units (fraction of the
         data box).  ``None`` uses ``1/1000``.
@@ -666,7 +662,7 @@ def lfo_run(
     n_embed_points = E.shape[0]
 
     # Each row E[r] corresponds to original time t = r + valid_start.
-    # Keep rows with t <= n_times - 2 so t+1 is valid (C's LENGTH - 1 cutoff).
+    # Keep rows with t <= n_times - 2 so t+1 is valid (LENGTH - 1 cutoff).
     last_valid_row = n_embed_points - 2
     E = E[: last_valid_row + 1]
     # E[r] corresponds to original time t = r + valid_start.
@@ -691,8 +687,8 @@ def lfo_run(
     step_done = 0
 
     for step_done in range(n_steps):
-        # Adaptive epsilon expansion (matches C: each iteration starts
-        # at eps0 / eps_factor, then multiplies until min_neighbors).
+        # Adaptive epsilon expansion: each iteration starts at
+        # eps0 / eps_factor, then multiplies until min_neighbors.
         epsilon = eps_start / eps_factor
         nbr_indices = None
         while True:
@@ -715,12 +711,12 @@ def lfo_run(
         else:  # zeroth
             newpoint = y.mean(axis=0)
 
-        # Write output BEFORE escape check (matches C: output newcast,
-        # then test for region escape and exit).
+        # Write output BEFORE the escape check: the new point is
+        # recorded, then the region escape test may terminate.
         out[step_done] = newpoint
         final_eps = epsilon
 
-        # Escape check: C uses > 2 or < -1 after rescaling (data in [0,1]).
+        # Escape check on the rescaled values (data in [0, 1]).
         if np.any(newpoint < -escape_scale) or np.any(newpoint > 1.0 + escape_scale):
             status = "escaped"
             break

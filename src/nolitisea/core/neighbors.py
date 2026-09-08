@@ -53,8 +53,7 @@ def find_neighbors(y, metric="chebyshev", theiler=0, maxnum=None):
     if maxnum is None:
         # Default: enough candidates to absorb the self-match (1) plus the
         # Theiler window (theiler) while still leaving one non-self,
-        # non-Theiler neighbour, with a small buffer.  Mirrors TISEAN's
-        # heuristic of ``2 * theiler + 3``.
+        # non-Theiler neighbour, with a small buffer (``2 * theiler + 3``).
         maxnum = 2 * (theiler + 1) + 1
     elif maxnum < theiler + 2:
         raise ValueError(
