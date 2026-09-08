@@ -2,6 +2,13 @@
 
 import numpy as np
 
+__all__ = [
+    "delay_embedding",
+    "delay_vectors",
+    "lag_block_delay_embed",
+    "mixed_embedding",
+]
+
 
 def delay_embedding(series, dim, delay=1):
     """Build a delay-coordinate embedding matrix.
@@ -111,6 +118,50 @@ def mixed_embedding(series_list, dims, delays):
     return np.hstack([block[:n_points] for block in blocks])
 
 
+def lag_block_delay_embed(data, embed, delay):
+    """Build the interleaved delay-coordinate matrix (column order).
+
+    Each row of the result is a phase-space point.  Row ``r``
+    corresponds to base time ``r + (embed - 1) * delay`` and column
+    ``k * n_vars + c`` holds the ``c``-th component at delay index
+    ``k`` (time ``r + (embed - 1 - k) * delay``), reproducing the C
+    program's coordinate order ``index_comp[i] = i % n_vars`` and
+    ``index_embed[i] = (i // n_vars) * delay``.
+
+    The prefix ``E[:, :m]`` is the order-``m`` embedding whose Chebyshev
+    diameter equals the running maximum over the first ``m``
+    coordinates — the quantity TISEAN ``d2`` accumulates in
+    ``found[m - 1]``.
+
+    Parameters
+    ----------
+    data : array_like
+        Input data.  A 1-D array is treated as a single component;
+        a 2-D array must have shape ``(n_times, n_vars)``.
+    embed : int
+        Embedding dimension per component.
+    delay : int
+        Time delay between consecutive embedding blocks.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(n_points, n_vars * embed)`` with
+        ``n_points = n_times - (embed - 1) * delay``.
+    """
+    arr = np.asarray(data, dtype=np.float64)
+    if arr.ndim == 1:
+        arr = arr[:, None]
+    n_times, n_vars = arr.shape
+    emb_offset = (embed - 1) * delay
+    n_points = n_times - emb_offset
+    E = np.empty((n_points, n_vars * embed), dtype=np.float64)
+    for k in range(embed):
+        lo = emb_offset - k * delay
+        E[:, k * n_vars : (k + 1) * n_vars] = arr[lo : lo + n_points, :]
+    return E
+
+
 def delay_vectors(series, embdim=None, delay=1, dims=None, increments=None):
     """Produce delay vectors.
 
@@ -194,7 +245,7 @@ def delay_vectors(series, embdim=None, delay=1, dims=None, increments=None):
         elif embdim != sum(dims):
             raise ValueError(f"embdim={embdim} does not match sum(dims)={sum(dims)}")
 
-    # Cumulative delay offset of every coordinate (C ``inddelay``).
+    # Cumulative delay offset of every coordinate.
     offsets = []
     if increments is None:
         if delay < 1:
@@ -238,23 +289,3 @@ def delay_vectors(series, embdim=None, delay=1, dims=None, increments=None):
             embedded[:, col] = component[start : start + n_points]
             col += 1
     return embedded
-
-
-def embedding_indices(n, dim, delay):
-    """Return the valid base indices usable for an embedding.
-
-    Parameters
-    ----------
-    n : int
-        Length of the original series.
-    dim : int
-        Embedding dimension.
-    delay : int
-        Time delay.
-
-    Returns
-    -------
-    numpy.ndarray
-        Integer array of base indices that fit inside the series.
-    """
-    raise NotImplementedError

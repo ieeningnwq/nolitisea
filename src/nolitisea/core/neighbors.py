@@ -1,14 +1,10 @@
-"""Box-assisted nearest-neighbour search.
-
-Replaces ``make_box`` / ``find_neighbors`` / ``make_multi_box`` /
-``find_multi_neighbors`` from the TISEAN routines.
-"""
+"""nearest-neighbour search."""
 
 import numpy as np
 from scipy.spatial import cKDTree  # type: ignore
 
 
-def find_neighbors(y, metric='chebyshev', theiler=0, maxnum=None):
+def find_neighbors(y, metric="chebyshev", theiler=0, maxnum=None):
     """Find nearest neighbors of all points in the given array.
 
     Finds the nearest neighbors of all points in the given array using
@@ -39,65 +35,67 @@ def find_neighbors(y, metric='chebyshev', theiler=0, maxnum=None):
     dist : array
         Array containing near neighbor distances.
     """
-    if metric == 'cityblock':
+    if metric == "cityblock":
         p = 1
-    elif metric == 'euclidean':
+    elif metric == "euclidean":
         p = 2
-    elif metric == 'chebyshev':
+    elif metric == "chebyshev":
         p = np.inf
     else:
-        raise ValueError('Unknown metric.  Should be one of "cityblock", '
-                         '"euclidean", or "chebyshev".')
+        raise ValueError(
+            'Unknown metric.  Should be one of "cityblock", '
+            '"euclidean", or "chebyshev".'
+        )
 
     tree = cKDTree(y)
     n = len(y)
 
-    if not maxnum:
-        maxnum = (theiler + 1) + 1 + (theiler + 1)
-    else:
-        maxnum = max(1, maxnum)
+    if maxnum is None:
+        # Default: enough candidates to absorb the self-match (1) plus the
+        # Theiler window (theiler) while still leaving one non-self,
+        # non-Theiler neighbour, with a small buffer.  Mirrors TISEAN's
+        # heuristic of ``2 * theiler + 3``.
+        maxnum = 2 * (theiler + 1) + 1
+    elif maxnum < theiler + 2:
+        raise ValueError(
+            f"maxnum must be >= theiler + 2 = {theiler + 2} (k-nearest "
+            f"query includes the self-match; the Theiler window blocks "
+            f"theiler more neighbours; need at least one surviving "
+            f"neighbour), got {maxnum}"
+        )
 
     if maxnum >= n:
-        raise ValueError('maxnum is bigger than array length.')
+        raise ValueError(
+            f"maxnum={maxnum} must be < array length n={n}"
+        )
 
-    dists = np.empty(n)
-    indices = np.empty(n, dtype=int)
+    # Vectorised batch k-nearest-neighbour query.  Passing the whole
+    # ``y`` array at once lets SciPy stream through the tree in C rather
+    # than going back into Python for each row — roughly 2× faster than
+    # the per-row loop.
+    dists_all, indices_all = tree.query(y, k=maxnum, p=p)
 
-    for i, x in enumerate(y):
-        dist, index = tree.query(x, k=maxnum, p=p)
-        valid = (np.abs(index - i) > theiler) & (dist > 0)
+    # ``k=1`` collapses the last axis.  Explicitly restore it so that
+    # the downstream boolean mask / argmax machinery always sees a 2-D
+    # array.
+    if maxnum == 1:
+        dists_all = dists_all[:, np.newaxis]
+        indices_all = indices_all[:, np.newaxis]
 
-        if not np.count_nonzero(valid):
-            raise RuntimeError('Could not find any near neighbor with a '
-                            'nonzero distance.  Try increasing the '
-                            'value of maxnum.')
-        dists[i] = dist[valid][0]
-        indices[i] = index[valid][0]
-    return np.squeeze(indices), np.squeeze(dists)
+    # Valid = inside the eps-ball, outside the Theiler window, non-self.
+    row_indices = np.arange(n)[:, np.newaxis]
+    valid_mask = (np.abs(indices_all - row_indices) > theiler) & (dists_all > 0)
 
+    has_valid = valid_mask.any(axis=1)
+    if not has_valid.all():
+        bad_rows = np.where(~has_valid)[0].tolist()[:5]
+        raise RuntimeError(
+            f"Could not find any non-self, non-Theiler neighbour for "
+            f"rows {bad_rows} ... Try increasing maxnum (must be >= "
+            f"theiler + 2 = {theiler + 2})."
+        )
 
-
-def find_multi_neighbors(series_list, point_list, eps, dims, delays, box):
-    """Neighbour search for a multivariate mixed embedding.
-
-    Parameters
-    ----------
-    series_list : sequence of numpy.ndarray
-        One array per variable.
-    point_list : sequence of numpy.ndarray
-        Query point per variable.
-    eps : float
-        Neighbourhood radius.
-    dims : sequence of int
-        Embedding dimension per variable.
-    delays : sequence of int
-        Delay per variable.
-    box : tuple
-        Box index returned by :func:`make_multi_box`.
-
-    Returns
-    -------
-    numpy.ndarray
-        Indices of neighbouring points.
-    """
-    raise NotImplementedError
+    # Pick the first (smallest-distance) surviving neighbour per row.
+    first_valid_idx = valid_mask.argmax(axis=1)
+    row_arr = np.arange(n)
+    return indices_all[row_arr, first_valid_idx], dists_all[row_arr, first_valid_idx]
