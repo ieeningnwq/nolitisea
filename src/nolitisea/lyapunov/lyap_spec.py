@@ -3,8 +3,7 @@
 from functools import partial
 
 import numpy as np
-from scipy.linalg import lstsq, qr
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree  # pyright: ignore[reportAttributeAccessIssue]
 
 from nolitisea.core.embed import lag_block_delay_embed
 from nolitisea.utils.parallel import parallel_map
@@ -63,7 +62,7 @@ def _lyap_spec_fit_worker(bound, E, arr, dists_all, idxs_all, n_neighbors,
         X_aug = np.column_stack([np.ones(i.size), E[i]])
         for dd in range(n_vars):
             y_t = arr[target_indices, dd]
-            beta, *_ = lstsq(X_aug, y_t, lapack_driver='gelsy')
+            beta, *_ = np.linalg.lstsq(X_aug, y_t, rcond=None)
             dynamics[j, dd] = beta[1:]
         valid[j] = True
         nb[j] = i.size
@@ -221,7 +220,7 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
     # diagonal of R, and ``Q.T`` has orthonormal rows.
     rng = np.random.default_rng(seed)
     delta = rng.standard_normal((alldim, alldim))
-    Q, _ = qr(delta.T)
+    Q, _ = np.linalg.qr(delta.T)
     delta = Q.T  # orthonormal rows
 
     log_sum = np.zeros(alldim)
@@ -300,7 +299,7 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
 
         # QR re-orthogonalise rows.  ``|R[j, j]|`` gives the stretch
         # factor for perturbation direction ``j`` before normalisation.
-        Q, R = qr(dnew.T)
+        Q, R = np.linalg.qr(dnew.T)
         stretch = np.abs(np.diag(R))
         stretch = np.where(stretch > 0.0, stretch, 1.0)
 
@@ -316,8 +315,8 @@ def lyap_spec(series, embed, n_iter=None, dt=1.0,
         )
 
     exponents = log_sum / count_out / dt
-    # scipy.linalg.qr places the largest stretch on the first diagonal
-    # entry, so ``exponents`` is already in descending order.
+    # The QR re-orthogonalisation places the largest stretch on the first
+    # diagonal entry, so ``exponents`` is already in descending order.
 
     # Kaplan--Yorke dimension:
     # D_KY = k + (sum_{j=1}^k lambda_j) / |lambda_{k+1}|
