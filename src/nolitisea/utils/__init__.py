@@ -1,3 +1,3 @@
 """Data preprocessing utilities."""
 
-from . import choose, histogram, parallel, resample, rescale  # noqa: F401
+from . import dist, parallel, resample, rescale  # noqa: F401
