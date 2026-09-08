@@ -1,4 +1,4 @@
-"""Tests for the TISEAN ``xcor`` rewrite in nolitisea.cross.xcor."""
+"""Tests for nolitisea.cross.xcor."""
 
 import unittest
 
