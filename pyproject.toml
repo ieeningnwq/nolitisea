@@ -1,19 +1,50 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "nolitisea"
 version = "0.1.0"
-description = "Nonlinear time series analysis toolkit"
-requires-python = ">=3.9"
-dependencies = ["numpy>=1.22", "scipy>=1.8"]
+description = "A Python toolkit for nonlinear time series analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "nolitisea contributors" },
+]
+keywords = [
+    "nonlinear time series",
+    "chaos",
+    "phase-space reconstruction",
+    "embedding",
+    "lyapunov exponent",
+    "correlation dimension",
+    "surrogates",
+    "recurrence plot",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+]
 
 [project.optional-dependencies]
-fast = ["numba>=0.56"]
-plot = ["matplotlib>=3.5"]
 nn = ["torch>=2.0"]
-node = ["torch>=2.0", "torchdiffeq>=0.2"]
+
+[project.urls]
+Homepage = "https://github.com/ieeningnwq/nolitisea"
+Repository = "https://github.com/ieeningnwq/nolitisea"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]

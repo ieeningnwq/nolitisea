@@ -26,16 +26,28 @@ built-in parallelism.
 
 ## Installation
 
+The package is not yet published on PyPI — install it locally from a clone:
+
 ```bash
-pip install nolitisea
+git clone https://github.com/ieeningnwq/nolitisea.git
+cd nolitisea
+pip install .
 ```
 
-Core functionality requires only NumPy and SciPy.  The neural-network
-predictors are an optional extra (PyTorch is imported lazily and only needed
-when you call them):
+For development or running the example notebooks, an editable install is
+recommended:
 
 ```bash
-pip install "nolitisea[nn]"
+pip install -e .
+```
+
+Core dependencies (NumPy, SciPy) are installed automatically.  The
+neural-network predictors additionally need PyTorch, which is an optional
+extra (imported lazily, only needed when you call the `nolitisea.prediction`
+neural-network functions):
+
+```bash
+pip install -e ".[nn]"
 ```
 
 Requires Python 3.10 or newer.
