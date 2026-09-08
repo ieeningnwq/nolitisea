@@ -26,7 +26,13 @@ built-in parallelism.
 
 ## Installation
 
-The package is not yet published on PyPI — install it locally from a clone:
+Install from PyPI:
+
+```bash
+pip install nolitisea
+```
+
+Alternatively, install from a local clone:
 
 ```bash
 git clone https://github.com/ieeningnwq/nolitisea.git
@@ -47,7 +53,7 @@ extra (imported lazily, only needed when you call the `nolitisea.prediction`
 neural-network functions):
 
 ```bash
-pip install -e ".[nn]"
+pip install "nolitisea[nn]"
 ```
 
 Requires Python 3.10 or newer.
