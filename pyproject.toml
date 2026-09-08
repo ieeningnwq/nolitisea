@@ -12,6 +12,8 @@ dependencies = ["numpy>=1.22", "scipy>=1.8"]
 [project.optional-dependencies]
 fast = ["numba>=0.56"]
 plot = ["matplotlib>=3.5"]
+nn = ["torch>=2.0"]
+node = ["torch>=2.0", "torchdiffeq>=0.2"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

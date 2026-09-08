@@ -65,9 +65,7 @@ def find_neighbors(y, metric="chebyshev", theiler=0, maxnum=None):
         )
 
     if maxnum >= n:
-        raise ValueError(
-            f"maxnum={maxnum} must be < array length n={n}"
-        )
+        raise ValueError(f"maxnum={maxnum} must be < array length n={n}")
 
     # Vectorised batch k-nearest-neighbour query.  Passing the whole
     # ``y`` array at once lets SciPy stream through the tree in C rather

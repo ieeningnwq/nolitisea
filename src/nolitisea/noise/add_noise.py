@@ -186,7 +186,9 @@ def add_noise(
             the per-column standard deviation (or absolute when
             ``absolute=True``)
           - harmonic: scales amplitudes
-          - impulse: unused (use ``impulse_prob`` / ``impulse_amplitude``)
+          - impulse: when ``absolute=True``, this explicitly sets the 
+            impulse amplitude (overriding ``impulse_amplitude``). When 
+            ``absolute=False``, this parameter is ignored.
     absolute : bool
         If True, `level` is an absolute scale.
     seed : int or None

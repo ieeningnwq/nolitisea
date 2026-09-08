@@ -47,7 +47,7 @@ def parallel_map(func, items, *, n_jobs=None, backend="thread"):
         return [func(item) for item in items]
 
     max_workers = os.cpu_count() if n_jobs == -1 else n_jobs
-    max_workers = max(1, min(max_workers, len(items)))
+    max_workers = max(1, min(max_workers, len(items)))  # pyright: ignore[reportArgumentType]
 
     executor_cls = ThreadPoolExecutor if backend == "thread" else ProcessPoolExecutor
     with executor_cls(max_workers=max_workers) as pool:

@@ -1,9 +1,10 @@
 """Recurrence plot."""
 
 import numpy as np
+from scipy.spatial import cKDTree  # pyright: ignore[reportAttributeAccessIssue]
 from scipy.spatial.distance import cdist
 
-from nolitisea.core.embed import delay_embedding
+from nolitisea.core.embed import delay_embedding, lag_block_delay_embed
 
 
 # ==========================================
@@ -39,7 +40,7 @@ def recurrence_matrix(series, dim, delay, eps, metric="euclidean"):
 
     # Calculate the pairwise distance matrix
     # cdist computes the distance between every pair of vectors efficiently
-    distance_matrix = cdist(embedded_vectors, embedded_vectors, metric=metric) # type: ignore
+    distance_matrix = cdist(embedded_vectors, embedded_vectors, metric=metric)  # type: ignore
 
     # Apply the Heaviside step function threshold
     # Returns a boolean matrix where True represents a recurrence
@@ -222,3 +223,143 @@ def max_vertical_length(rmat, v_min=2):
     if len(vert_lengths) == 0:
         return 0
     return int(np.max(vert_lengths))
+
+
+# ==========================================
+# 4. ``recurr``
+# ==========================================
+
+
+def recurr(series, embed=2, delay=1, eps=None, fraction=1.0, seed=0):
+    """Recurrence plot via a Chebyshev neighbour search.
+
+    Each component is rescaled to ``[0, 1]`` independently, the multivariate delay embedding is
+    built, and every pair of embedding vectors whose Chebyshev
+    distance is below ``eps`` is reported as a recurrence.  The
+    box-assisted search of the original program is replaced by a
+    single :func:`scipy.spatial.cKDTree.query_ball_tree` call.
+
+    Parameters
+    ----------
+    series : array_like
+        Input series.  A 1-D array is treated as a single component;
+        a 2-D array must have shape ``(n_times, n_vars)``.
+    embed : int, default 2
+        Embedding dimension per component;
+        ``DIM`` is inferred from the number of columns).
+    delay : int, default 1
+        Time delay between consecutive embedding coordinates.
+    eps : float or None
+        Recurrence threshold in the units of the input data.  ``None`` (default) uses the C default, the data
+        interval divided by 1000.  As in C the threshold is expressed
+        in the rescaled ``[0, 1]`` units: a user-supplied ``eps`` is
+        divided by the largest component range.
+    fraction : float, default 1.0
+        Fraction of eligible recurrence pairs to keep.  ``1.0`` keeps every pair (deterministic); smaller
+        values subsample uniformly.  The original program subsamples
+        with its own PRNG, so the exact pairs kept for
+        ``fraction < 1``; use ``fraction = 1.0`` for a
+        reproducible comparison.
+    seed : int, default 0
+        Seed for the subsampling generator (only used when
+        ``fraction < 1``).
+
+    Returns
+    -------
+    dict
+        ``"pairs"`` : ``(N, 2)`` int array of embedding row indices
+        ``(i, j)`` with ``i < j`` (upper triangle of the recurrence
+        matrix); the matrix is symmetric, so the full plot is obtained
+        by mirroring.
+        ``"eps"`` : the threshold in rescaled units.
+        ``"n_points"`` : the number of embedding vectors.
+
+    Raises
+    ------
+    ValueError
+        For invalid parameters or a series too short for the requested
+        ``embed``/``delay``.
+    RuntimeError
+        If any component is constant (zero value range).
+
+    Notes
+    -----
+    ``cKDTree`` uses a closed ball (``<= eps``).  On
+    continuous data the two coincide, so this rewrite matches a strict
+    transcription there; on quantised data the boundary pairs may
+    differ, consistent with the documented convention of the other
+    TISEAN rewrites in this package.
+
+    References
+    ----------
+    .. [1] Eckmann, J.-P., Kamphorst, S. O., & Ruelle, D. (1987).
+           Recurrence plots of dynamical systems.  *Europhysics
+           Letters*, 4(9), 973-977.
+    .. [2] Hegger, R., Kantz, H., & Schreiber, T. (1999). Practical
+           implementation of nonlinear time series methods: The TISEAN
+           package.  *Chaos*, 9(2), 413-435.
+    """
+    arr = np.asarray(series, dtype=np.float64)
+    if arr.ndim == 1:
+        arr = arr[:, None]
+    elif arr.ndim != 2:
+        raise ValueError(
+            "series must be a 1-D array or a 2-D array of shape (n_times, n_vars)"
+        )
+    # Copy so the rescaling below does not modify the caller's array.
+    arr = arr.copy()
+    _, n_vars = arr.shape
+
+    if embed < 1:
+        raise ValueError(f"embed must be >= 1, got {embed}")
+    if delay < 1:
+        raise ValueError(f"delay must be >= 1, got {delay}")
+    if not (0.0 < fraction <= 1.0):
+        raise ValueError(f"fraction must be in (0, 1], got {fraction}")
+
+    # Rescale every component to [0, 1]; maxmax is the largest original
+    # range, used to express a user threshold in rescaled units.
+    maxmax = 0.0
+    for c in range(n_vars):
+        comp = arr[:, c]
+        rng = np.ptp(comp)
+        if rng < 1e-30:
+            raise RuntimeError(f"component {c} is constant (zero range)")
+        arr[:, c] = (comp - comp.min()) / rng
+        maxmax = max(maxmax, rng)
+
+    eps_rescaled = 1.0e-3 if eps is None else abs(float(eps)) / maxmax
+
+    # Interleaved multivariate delay embedding (row r <-> base time
+    # r + (embed-1)*delay); the C coordinate order is reproduced, so
+    # the Chebyshev distance is identical.
+    E = lag_block_delay_embed(arr, embed, delay)
+    n_points = E.shape[0]
+
+    tree = cKDTree(E)
+    # query_ball_tree returns, for every point, every neighbour within
+    # eps_rescaled (Chebyshev); keep the upper triangle so each pair is
+    # reported once, matching the C output order (n+1, element+1 with
+    # element > n).
+    nb_lists = tree.query_ball_tree(tree, eps_rescaled, p=np.inf)
+    i_list = []
+    j_list = []
+    for i, nb in enumerate(nb_lists):
+        if len(nb) == 0:
+            continue
+        nb = np.asarray(nb)
+        sel = nb > i
+        if sel.any():
+            i_list.append(np.full(int(sel.sum()), i))
+            j_list.append(nb[sel])
+    if i_list:
+        pairs = np.column_stack([np.concatenate(i_list), np.concatenate(j_list)])
+    else:
+        pairs = np.empty((0, 2), dtype=np.intp)
+
+    if fraction < 1.0:
+        rng = np.random.default_rng(seed)
+        keep = rng.random(pairs.shape[0]) < fraction
+        pairs = pairs[keep]
+
+    return {"pairs": pairs, "eps": eps_rescaled, "n_points": n_points}
