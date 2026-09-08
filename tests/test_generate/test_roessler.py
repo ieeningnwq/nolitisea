@@ -30,7 +30,7 @@ class TestRoesslerOscillator(unittest.TestCase):
 
     def test_custom_initial_conditions(self):
         x0 = [1.0, 2.0, 3.0]
-        t, x = roessler(length=50, x0=x0, discard=0,
+        _, x = roessler(length=50, x0=x0, discard=0,
                         step=0.001, sample=0.001)
         self.assertEqual(x.shape, (50, 3))
         # With discard=0 and sample=step, first point should be close to x0
@@ -66,24 +66,21 @@ class TestRoesslerOscillator(unittest.TestCase):
 
     def test_custom_parameters(self):
         a, b, c = 0.15, 0.25, 6.0
-        try:
-            t, x = roessler(length=50, a=a, b=b, c=c, discard=5)
-        except Exception as e:
-            self.fail(f"roessler raised with custom parameters: {e}")
+        _, x = roessler(length=50, a=a, b=b, c=c, discard=5)
         self.assertEqual(x.shape, (50, 3))
 
     def test_no_nan_or_inf(self):
-        t, x = roessler(length=1000, discard=20)
+        _, x = roessler(length=1000, discard=20)
         self.assertFalse(np.any(np.isnan(x)))
         self.assertFalse(np.any(np.isinf(x)))
 
     def test_time_axis_monotonic(self):
-        t, x = roessler(length=100, discard=10)
+        t, _ = roessler(length=100, discard=10)
         self.assertTrue(np.all(np.diff(t) > 0))
 
     def test_random_initial_condition_no_crash(self):
         np.random.seed(0)
-        t, x = roessler(length=50, discard=5)
+        _, x = roessler(length=50, discard=5)
         self.assertEqual(x.shape, (50, 3))
         self.assertFalse(np.any(np.isnan(x)))
 
@@ -92,7 +89,7 @@ class TestRoesslerOscillator(unittest.TestCase):
         x0 = (-9.0, 0.0, 0.0)
         step = 0.001
         sample = 0.01  # internal sample = int(0.01 / 0.001) = 10
-        t, x = roessler(length=50, x0=x0, step=step, sample=sample, discard=0)
+        t, _ = roessler(length=50, x0=x0, step=step, sample=sample, discard=0)
         expected_dt = 10 * step
         actual_dt = t[1] - t[0]
         # linspace spacing is not exactly uniform; use a generous rtol
