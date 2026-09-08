@@ -83,8 +83,8 @@ class TestLyapKParallel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.x, _ = henon(n=5000)
-        cls.args = dict(dim=4, delay=1, max_steps=10, n_ref=1000,
-                        theiler=10)
+        cls.args = {"dim": 4, "delay": 1, "max_steps": 10, "n_ref": 1000,
+                        "theiler": 10}
         cls.serial = lyap_k(cls.x, **cls.args)
 
     def test_thread_backend_bitwise(self):
