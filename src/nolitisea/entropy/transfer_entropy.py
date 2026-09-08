@@ -36,7 +36,7 @@ def _sample_counts(*arrays: np.ndarray) -> np.ndarray:
     bin, the pack multiplier adapts to the actual cardinality, keeping
     the key space compact.
     """
-    arrays = [np.asarray(a, dtype=np.int64) for a in arrays]
+    arrays = [np.asarray(a, dtype=np.int64) for a in arrays]  # pyright: ignore[reportAssignmentType]
     n = len(arrays[0])
     if n == 0:
         return np.empty(0, dtype=np.float64)
