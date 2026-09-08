@@ -1,4 +1,4 @@
-"""Simple nonlinear noise reduction (TISEAN ``lazy``)."""
+"""Simple nonlinear noise reduction."""
 
 import numpy as np
 from scipy.spatial import cKDTree
@@ -43,8 +43,7 @@ def lazy(x, dim=1, delay=1, r=0, metric='chebyshev', repeat=1):
     reduction is done.  Note that the radius also depends on the metric
     used for distance computation.  Best results are often obtained
     using large embedding dimensions with unit delay and the Chebyshev
-    metric.  (This function is a featureful equivalent of the TISEAN
-    program "lazy".)
+    metric.
     """
     if metric == 'cityblock':
         p = 1
