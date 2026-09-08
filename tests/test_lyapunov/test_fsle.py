@@ -1,4 +1,4 @@
-"""Tests for the TISEAN ``fsle``."""
+"""Tests for nolitisea.lyapunov.fsle."""
 
 import math
 import unittest

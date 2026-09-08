@@ -3,8 +3,8 @@
 from functools import partial
 
 import numpy as np
-from scipy.spatial import cKDTree
 from scipy.linalg import lstsq, qr
+from scipy.spatial import cKDTree
 
 from nolitisea.core.embed import lag_block_delay_embed
 from nolitisea.utils.parallel import parallel_map

@@ -1,4 +1,4 @@
-"""Tests for the TISEAN ``lyap_k`` rewrite in nolitisea.lyapunov.lyap_k."""
+"""Tests for nolitisea.lyapunov.lyap_k."""
 
 import unittest
 
