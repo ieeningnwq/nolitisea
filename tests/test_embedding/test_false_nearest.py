@@ -1,6 +1,8 @@
 import unittest
+
 import numpy as np
-from nolitisea.embedding.false_nearest import kennel_method, cao_method
+
+from nolitisea.embedding.false_nearest import cao_method, kennel_method
 
 
 class TestKennelMethod(unittest.TestCase):
@@ -12,8 +14,8 @@ class TestKennelMethod(unittest.TestCase):
 
         # A line has zero FNN at all embedding dimensions.
         f_dict = kennel_method(x, min_emb=1,max_emb=10, delay=1, theiler=0)
-        for _,v in f_dict.items():
-            for _,vv in v.items():
+        for v in f_dict.values():
+            for vv in v.values():
                 self.assertAlmostEqual(vv, 0,places=2)
 
     def test_circle(self):
@@ -26,7 +28,7 @@ class TestKennelMethod(unittest.TestCase):
         
         f_dict = kennel_method(x, min_emb=1,max_emb=10, delay=25, theiler=0,n_jobs=-1)
         f1s=[]
-        for _,v in f_dict.items():
+        for v in f_dict.values():
             f1s.append(v['f1'])
         for f1, d in zip(f1s, desired):
             self.assertAlmostEqual(f1, d,places=2)  
@@ -37,7 +39,7 @@ class TestKennelMethod(unittest.TestCase):
         
         f_dict = kennel_method(x, min_emb=1,max_emb=10, delay=25, theiler=10,n_jobs=-1)
         f1s=[]
-        for _,v in f_dict.items():
+        for v in f_dict.values():
             f1s.append(v['f1'])
         # Though this curve is a deformation of a circle, it has zero
         # FNN only after d = 3.
@@ -58,7 +60,7 @@ class TestCaoMethod(unittest.TestCase):
         E_dict = cao_method(x, min_emb=1,max_emb=7, theiler=theiler, metric=metric)
         E=[]
         Es=[]
-        for _,v in E_dict.items():
+        for v in E_dict.values():
             E.append(v[0])
             Es.append(v[1])
         E=np.array(E)

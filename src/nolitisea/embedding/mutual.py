@@ -3,6 +3,7 @@
 import warnings
 
 import numpy as np
+from scipy.signal import argrelextrema
 from scipy.spatial.distance import pdist, squareform
 
 
@@ -96,41 +97,97 @@ def mutual_information(
 def embedded_mutual_information(series, max_lag, n_bins=16):
     """Estimate the mutual information for lags ``0..max_lag``.
 
+    For every lag ``tau`` in ``[0, max_lag]`` the mutual information
+    between ``series[:-tau]`` and ``series[tau:]`` is computed via
+    :func:`mutual_information` using an equi-width histogram with
+    ``n_bins`` bins.  The result is the classic delay-selection curve
+    used by TISEAN's ``mutual`` command (Fraser & Swinney 1986).
+
     Parameters
     ----------
     series : array_like
         Input scalar series.
     max_lag : int
-        Maximum lag.
+        Maximum lag to evaluate (inclusive).  Must satisfy
+        ``max_lag < len(series)``.
     n_bins : int, default 16
-        Number of histogram bins for the estimation.
+        Number of histogram bins for the joint distribution.
 
     Returns
     -------
     numpy.ndarray
-        Mutual information values of length ``max_lag + 1``.
+        Mutual information values of length ``max_lag + 1``, with
+        ``mi[tau] = I(x(t); x(t + tau))``.  ``mi[0]`` equals the
+        marginal entropy ``H(x)``.
+
+    Raises
+    ------
+    ValueError
+        If ``series`` is not 1-D, if ``max_lag`` is negative or not
+        smaller than the series length, or if ``n_bins`` is less than 1.
     """
-    raise NotImplementedError
+    arr = np.asarray(series)
+    if arr.ndim != 1:
+        raise ValueError(
+            f"series must be a 1-D array, got shape {arr.shape}"
+        )
+    if max_lag < 0:
+        raise ValueError(f"max_lag must be >= 0, got {max_lag}")
+    if max_lag >= arr.size:
+        raise ValueError(
+            f"max_lag ({max_lag}) must be smaller than the series "
+            f"length ({arr.size})"
+        )
+    if n_bins < 1:
+        raise ValueError(f"n_bins must be >= 1, got {n_bins}")
+
+    mi = np.empty(max_lag + 1, dtype=np.float64)
+    mi[0] = mutual_information(arr, arr, bins=n_bins)
+    for tau in range(1, max_lag + 1):
+        mi[tau] = mutual_information(arr[:-tau], arr[tau:], bins=n_bins)
+    return mi
 
 
 def first_minimum(series, max_lag, n_bins=16):
     """Return the lag of the first local minimum of the mutual information.
 
+    Computes the delay-selection curve with
+    :func:`embedded_mutual_information` and returns the lag of its
+    first local minimum, the standard delay estimate for phase-space
+    reconstruction (Fraser & Swinney 1986).
+
     Parameters
     ----------
     series : array_like
         Input scalar series.
     max_lag : int
-        Maximum lag to scan.
+        Maximum lag to scan.  Must be at least 2 so that a local
+        minimum can exist, and smaller than the series length.
     n_bins : int, default 16
         Number of histogram bins.
 
     Returns
     -------
     int
-        Estimated delay.
+        Estimated delay (the lag of the first local minimum).  If no
+        local minimum is found, returns the lag of the global minimum
+        as a fallback.
+
+    Raises
+    ------
+    ValueError
+        If ``max_lag < 2`` (no local minimum can exist) or if the
+        arguments are invalid for :func:`embedded_mutual_information`.
     """
-    raise NotImplementedError
+    if max_lag < 2:
+        raise ValueError(
+            f"max_lag must be >= 2 to locate a local minimum, got {max_lag}"
+        )
+    mi = embedded_mutual_information(series, max_lag, n_bins=n_bins)
+    local_minima = argrelextrema(mi, np.less)[0]
+    if local_minima.size:
+        return int(local_minima[0])
+    return int(np.argmin(mi))
 
 
 def _build_gaussian_kernel(series, sigma=None):
