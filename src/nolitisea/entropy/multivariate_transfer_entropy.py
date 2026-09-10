@@ -128,7 +128,7 @@ def multivariate_transfer_entropy(
     if np.ndim(l_z) == 0:
         l_z_vals = [int(l_z)] * n_cond
     else:
-        l_z_vals = [int(v) for v in l_z]
+        l_z_vals = [int(v) for v in l_z]  # pyright: ignore[reportGeneralTypeIssues]
         if len(l_z_vals) != n_cond:
             raise ValueError(
                 f"l_z has {len(l_z_vals)} entries but {n_cond} "

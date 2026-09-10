@@ -30,3 +30,4 @@ venv/
 env/
 .venv*/
 pyrightconfig.json
+.trae/

@@ -19,8 +19,8 @@ from nolitisea.entropy.multivariate_transfer_entropy import (
 # ---------------------------------------------------------------------------
 
 
-def _brute_te_conditional(source, target, condition, k=1, l=1, l_z=1,
-                          h=1, bins=10):
+def _brute_te_conditional(source, target, condition, k=1, l=1, l_z: int|list = 1,
+                          h: int = 1, bins: int = 10):
     """O(n^2) dict-based histogram conditional TE estimator.
 
     Builds delay vectors explicitly, digitizes each scalar variable
@@ -43,9 +43,9 @@ def _brute_te_conditional(source, target, condition, k=1, l=1, l_z=1,
     n_cond = len(cond_list)
 
     if np.ndim(l_z) == 0:
-        l_z_vals = [int(l_z)] * n_cond
+        l_z_vals = [int(l_z)] * n_cond  # pyright: ignore[reportArgumentType]
     else:
-        l_z_vals = [int(v) for v in l_z]
+        l_z_vals = [int(v) for v in l_z]  # pyright: ignore[reportGeneralTypeIssues]
 
     N = y.size
     max_hist = max(k - 1, l - 1, max(l_z_vals) - 1)
@@ -201,7 +201,7 @@ class TestMultivariateTEBruteForce(unittest.TestCase):
         x = rng.standard_normal(150)
         y = 0.5 * x + 0.3 * z1 + 0.2 * z2 + 0.3 * rng.standard_normal(150)
         got = multivariate_transfer_entropy(
-            x, y, [z1, z2], l_z=[2, 3], bins=4
+            x, y, [z1, z2], l_z=[2, 3], bins=4  # pyright: ignore[reportArgumentType]
         )
         ref = _brute_te_conditional(
             x, y, [z1, z2], l_z=[2, 3], bins=4
@@ -313,7 +313,7 @@ class TestMultivariateTEValidation(unittest.TestCase):
             multivariate_transfer_entropy(
                 np.arange(20.0), np.arange(20.0),
                 [np.arange(20.0), np.arange(20.0)],
-                l_z=[1, 0],
+                l_z=[1, 0],  # pyright: ignore[reportArgumentType]
             )
 
     def test_lz_sequence_length_mismatch_raises(self):
@@ -321,7 +321,7 @@ class TestMultivariateTEValidation(unittest.TestCase):
             multivariate_transfer_entropy(
                 np.arange(20.0), np.arange(20.0),
                 [np.arange(20.0), np.arange(20.0)],
-                l_z=[1, 1, 1],  # 3 entries but 2 condition vars
+                l_z=[1, 1, 1],  # 3 entries but 2 condition vars  # pyright: ignore[reportArgumentType]
             )
 
     def test_invalid_h_raises(self):
