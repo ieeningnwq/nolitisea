@@ -130,9 +130,18 @@ class TestHiguchiFDProperties(unittest.TestCase):
 class TestHiguchiFDErrors(unittest.TestCase):
     """Input validation."""
 
-    def test_1d_input_raises(self):
-        with self.assertRaises(ValueError):
-            higuchi_fd(np.arange(100.0), kmax=5)
+    def test_1d_input_supported(self):
+        rng = np.random.default_rng(42)
+        s = np.cumsum(rng.standard_normal(500))
+        hfd_1d = higuchi_fd(s, kmax=10)
+        hfd_2d = higuchi_fd(s.reshape(-1, 1), kmax=10)
+        self.assertEqual(hfd_1d.shape, (1,))
+        np.testing.assert_allclose(hfd_1d, hfd_2d)
+
+    def test_1d_list_input(self):
+        s = list(range(100))
+        hfd = higuchi_fd(s, kmax=5)
+        self.assertEqual(hfd.shape, (1,))
 
     def test_3d_input_raises(self):
         with self.assertRaises(ValueError):

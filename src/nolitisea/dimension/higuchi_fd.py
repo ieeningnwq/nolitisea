@@ -3,7 +3,7 @@ import numpy as np
 __all__ = ["higuchi_fd"]
 
 
-def higuchi_fd(series_matrix, kmax):
+def higuchi_fd(series_matrix, kmax=10):
     """Higuchi fractal dimension of one or more time series.
 
     For each scalar time series X(0), ..., X(N-1) the method constructs,
@@ -29,22 +29,23 @@ def higuchi_fd(series_matrix, kmax):
     Parameters
     ----------
     series_matrix : array_like
-        A 2-D array of shape ``(n_samples, n_series)``.  Each column is
-        an independent time series; rows are time steps.
+        A 1-D array of shape ``(n_samples,)`` (a single series) or a
+        2-D array of shape ``(n_samples, n_series)`` where each column
+        is an independent time series and rows are time steps.
     kmax : int
-        Maximum time lag k.  Must be >= 2.
+        Maximum time lag k. Default 10. Must be >= 2.
 
     Returns
     -------
     numpy.ndarray
         A 1-D array of shape ``(n_series,)`` with the HFD of each
-        column.
+        column (shape ``(1,)`` for a 1-D input).
 
     Raises
     ------
     ValueError
-        If the input is not 2-D, ``kmax`` < 2, or the series is too
-        short (fewer than ``2 * kmax`` samples).
+        If the input is not 1-D or 2-D, ``kmax`` < 2, or the series is
+        too short (fewer than ``2 * kmax`` samples).
 
     References
     ----------
@@ -54,10 +55,11 @@ def higuchi_fd(series_matrix, kmax):
     """
     x = np.asarray(series_matrix, dtype=np.float64)
 
-    if x.ndim != 2:
+    if x.ndim == 1:
+        x = x[:, None]
+    elif x.ndim != 2:
         raise ValueError(
-            f"Input must be a 2D matrix of shape (samples, series_count), "
-            f"got {x.ndim}D."
+            f"Input must be 1-D or 2-D, got {x.ndim}D."
         )
     if kmax < 2:
         raise ValueError(f"kmax must be >= 2, got {kmax}.")
