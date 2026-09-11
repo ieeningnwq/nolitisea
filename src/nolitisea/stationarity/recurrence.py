@@ -49,6 +49,111 @@ def recurrence_matrix(series, dim, delay, eps, metric="euclidean"):
     return recurrence_mask
 
 
+def recurrence_matrix_fixed_rr(series, dim, delay, target_rr, metric="euclidean"):
+    """Build a binary recurrence matrix at an approximately fixed recurrence rate (RR).
+
+    Instead of providing a specific distance threshold, this function chooses
+    the threshold from the order statistics of the observed pairwise distances
+    (excluding the main diagonal) so that the closest attainable proportion of
+    recurrences is retained.
+
+    Parameters
+    ----------
+    series : array_like
+        Input scalar series.
+    dim : int
+        Embedding dimension.
+    delay : int
+        Time delay.
+    target_rr : float
+        The desired Recurrence Rate, expressed as a fraction between 0.0 and 1.0
+        (e.g., 0.05 for 5% RR).
+    metric : str, default "euclidean"
+        Distance metric name.
+
+    Returns
+    -------
+    recurrence_mask : numpy.ndarray
+        Boolean matrix of shape ``(n_points, n_points)`` representing the recurrence plot.
+    eps : float
+        The automatically selected distance threshold (an observed off-diagonal
+        distance).  ``float('inf')`` is returned when ``target_rr == 1.0`` so
+        that every pair is retained.
+
+    Raises
+    ------
+    ValueError
+        If ``target_rr`` is not in the closed interval ``[0.0, 1.0]``.
+    RuntimeError
+        If all embedded vectors coincide (all pairwise distances are zero),
+        e.g. for a constant input series: no finite threshold can produce a
+        positive RR in a degenerate single-point state space.
+
+    Notes
+    -----
+    With unique (continuous) distances the realised off-diagonal RR differs
+    from ``target_rr`` by at most half a granularity step
+    (``1 / n_points / (n_points - 1)``).  When distances are tied (quantised
+    data) all pairs sharing a boundary distance are either kept or excluded
+    together, so the realised RR is the closest value allowed by the
+    threshold grid and can deviate further.
+    """
+    if not (0.0 <= float(target_rr) <= 1.0):
+        raise ValueError(f"target_rr must be in [0.0, 1.0], got {target_rr}")
+
+    data = np.asarray(series)
+
+    # Phase space reconstruction (Time Delay Embedding)
+    embedded_vectors = delay_embedding(data, dim, delay)
+
+    # Calculate the pairwise distance matrix efficiently using cdist
+    distance_matrix = cdist(embedded_vectors, embedded_vectors, metric=metric)  # pyright: ignore[reportCallIssue, reportArgumentType]
+
+    n_points = distance_matrix.shape[0]
+
+    if n_points <= 1:
+        # Cannot calculate off-diagonal order statistics for a 1x1 or empty matrix
+        return distance_matrix < np.inf, 0.0
+
+    # Look at pairwise distances excluding the main diagonal (Line of Identity).
+    # np.triu_indices(n, k=1) gives the indices for the upper triangle, omitting the main diagonal.
+    upper_tri_indices = np.triu_indices(n_points, k=1)
+    off_diagonal_distances = distance_matrix[upper_tri_indices]
+
+    # A degenerate state space (e.g. a constant series) has no positive
+    # distances: every finite threshold gives RR = 0, so raise instead of
+    # silently returning an empty plot.
+    if not np.any(off_diagonal_distances > 0.0):
+        raise RuntimeError(
+            "cannot fix recurrence rate: all embedded vectors coincide "
+            "(zero pairwise distances), e.g. a constant input series"
+        )
+
+    n_pairs = off_diagonal_distances.size
+    sorted_distances = np.sort(off_diagonal_distances)
+
+    # Number of off-diagonal pairs to retain, rounded to the nearest integer.
+    # The threshold is an observed order statistic rather than an interpolated
+    # quantile, so the result is reproducible and respects tied distances.
+    k = round(float(target_rr) * n_pairs)
+    if k <= 0:
+        # Strictly below the smallest observed distance: no pair is retained.
+        eps = float(sorted_distances[0])
+    elif k >= n_pairs:
+        # Keep every pair regardless of its distance.
+        eps = float("inf")
+    else:
+        # k-th order statistic: with unique distances exactly k pairs are
+        # strictly smaller; pairs tied with this boundary are strictly excluded,
+        # which may result in keeping slightly fewer pairs than expected.
+        eps = float(sorted_distances[k])
+
+    # Apply the Heaviside step function threshold using the selected eps
+    recurrence_mask = distance_matrix < eps
+
+    return recurrence_mask, eps
+
+
 # ==========================================
 # 2. Line Extraction Utilities
 # ==========================================
